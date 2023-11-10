@@ -376,6 +376,7 @@ class WallScenarios(EnvModule):
                 'var_quadrant': same as 'quadrant' but the room size is also randomized
                 'var_tri': three rooms, one taking about half of the area and the other
                     two taking about a quarter of the area. Random doors
+                'ctf': capture the flag
             friction (float): wall friction
             p_door_dropout (float): probability we don't place one of the doors either
                 quadrant scenario
@@ -385,7 +386,7 @@ class WallScenarios(EnvModule):
     @store_args
     def __init__(self, grid_size, door_size, scenario, friction=None, p_door_dropout=0.0,
                  low_outside_walls=False):
-        assert scenario in ['var_quadrant', 'quadrant', 'half', 'var_tri', 'empty']
+        assert scenario in ['var_quadrant', 'quadrant', 'half', 'var_tri', 'empty', 'ctf']
 
     def build_world_step(self, env, floor, floor_size):
         # Outside walls
@@ -403,6 +404,28 @@ class WallScenarios(EnvModule):
                 walls_to_split = [new_walls[wall_to_split]]
             else:
                 walls_to_split = new_walls
+        elif self.scenario == 'ctf':
+            q_size = int(0.5 * self.grid_size)
+            env.metadata['quadrant_size'] = q_size
+            walls = [
+                Wall([q_size, q_size // 2], [q_size, 3 * q_size // 2]),
+
+                Wall([2 * q_size // 3, q_size // 2], [self.grid_size - 2 * q_size // 3, q_size // 2]),
+                Wall([2 * q_size // 3, self.grid_size - q_size // 2], [self.grid_size - 2 * q_size // 3, self.grid_size - q_size // 2]),
+
+                Wall([2 * q_size // 3, q_size // 2], [2 * q_size // 3, 0]),
+                Wall([self.grid_size - 2 * q_size // 3, self.grid_size - q_size // 2], [self.grid_size - 2 * q_size // 3, self.grid_size - 1]),
+
+                Wall([q_size // 10, 4 * q_size // 5], [2 * q_size // 5, 4 * q_size // 5]),
+                Wall([q_size // 10, self.grid_size - 4 * q_size // 5], [2 * q_size // 5, self.grid_size - 4 * q_size // 5]),
+                Wall([self.grid_size - q_size // 10, 4 * q_size // 5], [self.grid_size - 2 * q_size // 5, 4 * q_size // 5]),
+                Wall([self.grid_size - q_size // 10, self.grid_size - 4 * q_size // 5], [self.grid_size - 2 * q_size // 5, self.grid_size - 4 * q_size // 5]),
+
+            ]
+            walls_to_split = [
+                Wall([self.grid_size - 2 * q_size // 3, q_size // 2], [self.grid_size - 2 * q_size // 3, 0]),
+                Wall([2 * q_size // 3, self.grid_size - q_size // 2], [2 * q_size // 3, self.grid_size - 1]),
+            ]
         elif self.scenario == 'half':
             walls_to_split += [Wall([self.grid_size - 1, self.grid_size // 2],
                                     [0, self.grid_size // 2])]

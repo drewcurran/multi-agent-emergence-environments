@@ -26,12 +26,28 @@ from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import (uniform_placement, close_to_other_object_placement,
                                    uniform_placement_middle)
 
+# Gameplay constants
+SCENARIO = 'ctf'
+TEAMS = 2
+TEAM_PLAYERS = 2
+TEAM_RAMPS = 1
+TEAM_BOXES = 1
+TEAM_WALLS = 1
+FLOOR_SIZE = 10
+GRID_SIZE = 50
+DOOR_SIZE = 2
 
+# Learning constants
+
+# Display constants
+TEAM1_COLOR = [np.array((66., 235., 244., 255.)) / 255]
+TEAM2_COLOR = [(1., 0., 0., 1.)]
+
+
+'''
+Keeps track of important statistics that are indicative of game dynamics.
+'''
 class TrackStatWrapper(gym.Wrapper):
-    '''
-        Keeps track of important statistics that are indicative of hide and seek
-        dynamics
-    '''
     def __init__(self, env, n_boxes, n_ramps, n_food):
         super().__init__(env)
         self.n_boxes = n_boxes
@@ -100,22 +116,19 @@ class TrackStatWrapper(gym.Wrapper):
 
         return obs, rew, done, info
 
-
-class HideAndSeekRewardWrapper(gym.Wrapper):
-    '''
-        Establishes hide and seek dynamics (see different reward types below). Defaults to first half
-            of agents being hiders and second half seekers unless underlying environment specifies
-            'n_hiders' and 'n_seekers'.
-        Args:
-            rew_type (string): can be
-                'selfish': hiders and seekers play selfishly. Seekers recieve 1.0 if they can
-                    see any hider and -1.0 otherwise. Hiders recieve 1.0 if they are seen by no
-                    seekers and -1.0 otherwise.
-                'joint_mean': hiders and seekers recieve the mean reward of their team
-                'joint_zero_sum': hiders recieve 1.0 only if all hiders are hidden and -1.0 otherwise.
-                    Seekers recieve 1.0 if any seeker sees a hider.
-            reward_scale (float): scales the reward by this factor
-    '''
+'''
+Establishes game dynamics (see different reward types below).
+Args:
+    rew_type (string): can be
+        'selfish': agents play selfishly. Seekers recieve 1.0 if they can
+            see any hider and -1.0 otherwise. Hiders recieve 1.0 if they are seen by no
+            seekers and -1.0 otherwise.
+        'joint_mean': agents recieve the mean reward of their team
+        'joint_zero_sum': hiders recieve 1.0 only if all hiders are hidden and -1.0 otherwise.
+            Seekers recieve 1.0 if any seeker sees a hider.
+    reward_scale (float): scales the reward by this factor
+'''
+class GameRewardWrapper(gym.Wrapper):
     def __init__(self, env, n_hiders, n_seekers, rew_type='selfish', reward_scale=1.0):
         super().__init__(env)
         self.n_agents = self.unwrapped.n_agents
@@ -154,17 +167,17 @@ class HideAndSeekRewardWrapper(gym.Wrapper):
         rew += this_rew
         return obs, rew, done, info
 
+'''
+Masks a (binary) action with some probability if agent or any of its teammates was being observed
+by opponents at any of the last n_latency time step.
 
+Args:
+    team_idx (int): Team index (e.g. 0 = hiders) of team whose actions are
+                    masked
+    action_key (string): key of action to be masked
+'''
 class MaskUnseenAction(gym.Wrapper):
-    '''
-        Masks a (binary) action with some probability if agent or any of its teammates was being observed
-        by opponents at any of the last n_latency time step
 
-        Args:
-            team_idx (int): Team index (e.g. 0 = hiders) of team whose actions are
-                            masked
-            action_key (string): key of action to be masked
-    '''
 
     def __init__(self, env, team_idx, action_key):
         super().__init__(env)
@@ -217,9 +230,9 @@ def outside_quadrant_placement(grid, obj_size, metadata, random_state):
 
 
 def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
-             floor_size=6.0, grid_size=30, door_size=2,
+             floor_size=10.0, grid_size=50, door_size=2,
              n_hiders=2, n_seekers=2, max_n_agents=None,
-             n_boxes=2, n_ramps=2, n_elongated_boxes=0,
+             n_boxes=4, n_ramps=2, n_elongated_boxes=2,
              rand_num_elongated_boxes=False, n_min_boxes=None,
              box_size=0.5, boxid_obs=False, box_only_z_rot=True,
              rew_type='joint_zero_sum',
@@ -250,50 +263,11 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
                action_lims=action_lims,
                deterministic_mode=deterministic_mode)
 
-    if scenario == 'randomwalls':
-        env.add_module(RandomWalls(
-            grid_size=grid_size, num_rooms=n_rooms,
-            random_room_number=random_room_number, min_room_size=6,
-            door_size=door_size,
-            prob_outside_walls=prob_outside_walls, gen_door_obs=False))
-        box_placement_fn = uniform_placement
-        ramp_placement_fn = uniform_placement
-        cell_size = floor_size / grid_size
-
-        first_hider_placement = uniform_placement
-        if hiders_together_radius is not None:
-            htr_in_cells = np.ceil(hiders_together_radius / cell_size).astype(int)
-
-            env.metadata['hiders_together_radius'] = htr_in_cells
-
-            close_to_first_hider_placement = close_to_other_object_placement(
-                                                "agent", 0, "hiders_together_radius")
-
-            agent_placement_fn = [first_hider_placement] + \
-                                 [close_to_first_hider_placement] * (n_hiders - 1)
-        else:
-            agent_placement_fn = [first_hider_placement] * n_hiders
-
-        first_seeker_placement = uniform_placement
-
-        if seekers_together_radius is not None:
-            str_in_cells = np.ceil(seekers_together_radius / cell_size).astype(int)
-
-            env.metadata['seekers_together_radius'] = str_in_cells
-
-            close_to_first_seeker_placement = close_to_other_object_placement(
-                                                "agent", n_hiders, "seekers_together_radius")
-
-            agent_placement_fn += [first_seeker_placement] + \
-                                  [close_to_first_seeker_placement] * (n_seekers - 1)
-        else:
-            agent_placement_fn += [first_seeker_placement] * (n_seekers)
-
-    elif scenario == 'ctf':
+    if scenario == 'ctf':
         env.add_module(WallScenarios(grid_size=grid_size, door_size=door_size,
                                      scenario=scenario, friction=other_friction,
                                      p_door_dropout=p_door_dropout))
-        box_placement_fn = quadrant_placement
+        box_placement_fn = uniform_placement
         ramp_placement_fn = uniform_placement
         hider_placement = uniform_placement if quadrant_game_hider_uniform_placement else quadrant_placement
         agent_placement_fn = [hider_placement] * n_hiders + [outside_quadrant_placement] * n_seekers
@@ -354,7 +328,7 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
     env = AgentAgentObsMask2D(env)
     hider_obs = np.array([[1]] * n_hiders + [[0]] * n_seekers)
     env = AddConstantObservationsWrapper(env, new_obs={'hider': hider_obs})
-    env = HideAndSeekRewardWrapper(env, n_hiders=n_hiders, n_seekers=n_seekers,
+    env = GameRewardWrapper(env, n_hiders=n_hiders, n_seekers=n_seekers,
                                    rew_type=rew_type)
     if restrict_rect is not None:
         env = RestrictAgentsRect(env, restrict_rect=restrict_rect, penalize_objects_out=penalize_objects_out)

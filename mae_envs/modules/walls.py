@@ -410,9 +410,6 @@ class WallScenarios(EnvModule):
             walls = [
                 Wall([q_size, q_size // 2], [q_size, 3 * q_size // 2]),
 
-                Wall([2 * q_size // 3, q_size // 2], [self.grid_size - 2 * q_size // 3, q_size // 2]),
-                Wall([2 * q_size // 3, self.grid_size - q_size // 2], [self.grid_size - 2 * q_size // 3, self.grid_size - q_size // 2]),
-
                 Wall([2 * q_size // 3, q_size // 2], [2 * q_size // 3, 0]),
                 Wall([self.grid_size - 2 * q_size // 3, self.grid_size - q_size // 2], [self.grid_size - 2 * q_size // 3, self.grid_size - 1]),
 
@@ -423,6 +420,9 @@ class WallScenarios(EnvModule):
 
             ]
             walls_to_split = [
+                Wall([2 * q_size // 3, q_size // 2], [self.grid_size - 2 * q_size // 3, q_size // 2]),
+                Wall([2 * q_size // 3, self.grid_size - q_size // 2], [self.grid_size - 2 * q_size // 3, self.grid_size - q_size // 2]),
+                
                 Wall([self.grid_size - 2 * q_size // 3, q_size // 2], [self.grid_size - 2 * q_size // 3, 0]),
                 Wall([2 * q_size // 3, self.grid_size - q_size // 2], [2 * q_size // 3, self.grid_size - 1]),
             ]

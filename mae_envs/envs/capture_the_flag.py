@@ -26,22 +26,46 @@ from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import (uniform_placement, close_to_other_object_placement,
                                    uniform_placement_middle)
 
-# Gameplay constants
-SCENARIO = 'ctf'
-TEAMS = 2
-TEAM_PLAYERS = 2
-TEAM_RAMPS = 1
-TEAM_BOXES = 1
-TEAM_WALLS = 1
-FLOOR_SIZE = 10
-GRID_SIZE = 50
-DOOR_SIZE = 2
 
-# Learning constants
+'''
+Sets up the game environment.
+'''
+class GameEnvironment:
+    def __init__(self):
+        # World constants
+        self.scenario = 'ctf'
+        self.floor_size = 10
+        self.grid_size = 50
+        self.door_size = 2
 
-# Display constants
-TEAM1_COLOR = [np.array((66., 235., 244., 255.)) / 255]
-TEAM2_COLOR = [(1., 0., 0., 1.)]
+        # Team constants
+        self.teams = 2
+        self.team_players = 2
+        self.team_ramps = 1
+        self.team_boxes = 1
+        self.team_walls = 1
+
+        # Display constants
+        self.team_colors = [
+            [np.array((66., 235., 244., 255.)) / 255],
+            [(1., 0., 0., 1.)]
+        ]
+        self.horizon = 80
+
+    def player_placement(self):
+        pass
+
+    def ramp_placement(self):
+        pass
+
+    def box_placement(self):
+        pass
+
+    def wall_placement(self):
+        pass
+    
+    def make_env(self):
+        pass
 
 
 '''
@@ -177,8 +201,6 @@ Args:
     action_key (string): key of action to be masked
 '''
 class MaskUnseenAction(gym.Wrapper):
-
-
     def __init__(self, env, team_idx, action_key):
         super().__init__(env)
         self.team_idx = team_idx
@@ -230,7 +252,7 @@ def outside_quadrant_placement(grid, obj_size, metadata, random_state):
 
 
 def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
-             floor_size=10.0, grid_size=50, door_size=2,
+             floor_size=7.5, grid_size=50, door_size=2,
              n_hiders=2, n_seekers=2, max_n_agents=None,
              n_boxes=4, n_ramps=2, n_elongated_boxes=2,
              rand_num_elongated_boxes=False, n_min_boxes=None,

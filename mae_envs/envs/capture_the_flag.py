@@ -40,7 +40,10 @@ class GameEnvironment:
         self.floor_friction = 0.2
         self.object_friction = 0.01
         self.gravity = [0, 0, -50]
+        self.box_size = 0.5
         self.flag_size = 0.1
+        self.grab_radius = 0.25 / self.box_size
+        self.lock_type = 'any_lock_specific'
 
         # Team constants
         self.teams = 2
@@ -49,6 +52,13 @@ class GameEnvironment:
         self.team_boxes = 1
         self.team_walls = 1
         self.team_flags = 1
+
+        # Game constants
+        self.n_players = self.teams * self.team_players
+        self.n_boxes = self.teams * self.team_boxes
+        self.n_walls = self.teams * self.team_walls
+        self.n_ramps = self.teams * self.team_ramps
+        self.n_flags = self.teams * self.team_flags
 
         # Display constants
         self.team_colors = [
@@ -64,6 +74,7 @@ class GameEnvironment:
         self.action_lims = (-0.9, 0.9)
         self.deterministic = False
         self.preparation_time = 0.4
+        self.reward_type = 'joint_zero_sum'
 
     def player_placement(self):
         pass
@@ -76,25 +87,9 @@ class GameEnvironment:
 
     def wall_placement(self):
         pass
-    
-    def make_env(self,
-             box_size=0.5, boxid_obs=False, box_only_z_rot=True,
-             rew_type='joint_zero_sum', lock_ramp=True,
-             lock_type='any_lock_specific',
-             lock_grab_radius=0.25, grab_exclusive=False
-             ):
-        n_players = self.teams * self.team_players
-        n_boxes = self.teams * self.team_boxes
-        n_ramps = self.teams * self.team_ramps
-        n_flags = self.teams * self.team_flags
 
-        keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
-        keys_mask_self = ['mask_aa_obs']
-        keys_external = ['agent_qpos_qvel', 'mask_ab_obs', 'box_obs', 'mask_af_obs', 'food_obs', 'ramp_obs']
-        keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
-        keys_mask_external = ['mask_ab_obs', 'mask_af_obs', 'mask_ar_obs', 'lidar']
-
-        env = Base(n_agents = n_players,
+    def construct_env(self):
+        env = Base(n_agents = self.n_players,
                    n_substeps = self.substeps,
                    horizon = self.horizon,
                    floor_size = self.floor_size,
@@ -110,7 +105,7 @@ class GameEnvironment:
         env.add_module(walls)
 
         agent_placement_fn = uniform_placement
-        agents = Agents(n_agents = n_players,
+        agents = Agents(n_agents = self.n_players,
                         placement_fn = agent_placement_fn,
                         color = self.team_colors[0] * self.team_players + self.team_colors[1] * self.team_players,
                         friction = self.object_friction)
@@ -118,23 +113,23 @@ class GameEnvironment:
         env.add_module(AgentManipulation())
 
         ramp_placement_fn = uniform_placement
-        ramps = Ramps(n_ramps = n_ramps,
+        ramps = Ramps(n_ramps = self.n_flags,
                       placement_fn = ramp_placement_fn,
                       friction = self.object_friction,
                       pad_ramp_size = True)
         env.add_module(ramps)
 
         box_placement_fn = uniform_placement
-        boxes = Boxes(n_boxes = self.teams * (self.team_boxes + self.team_walls),
-                      n_elongated_boxes = self.teams * self.team_walls,
+        boxes = Boxes(n_boxes = self.n_boxes + self.n_walls,
+                      n_elongated_boxes = self.n_walls,
                       placement_fn = box_placement_fn,
                       friction = self.floor_friction,
-                      boxid_obs = boxid_obs,
-                      box_only_z_rot = box_only_z_rot)
+                      boxid_obs = False,
+                      box_only_z_rot = True)
         env.add_module(boxes)
 
         food_placement = uniform_placement
-        flags = Food(n_food = n_flags,
+        flags = Food(n_food = self.n_flags,
                      food_size = self.flag_size,
                      placement_fn = food_placement)
         env.add_module(flags)
@@ -146,10 +141,20 @@ class GameEnvironment:
         env.add_module(gravity)
 
         if self.lidar > 0 and self.visualize_lidar:
-            lidar = LidarSites(n_agents = n_players,
+            lidar = LidarSites(n_agents = self.n_players,
                                n_lidar_per_agent = self.lidar)
             env.add_module(lidar)
+        
+        return env
+    
+    def make_env(self):
+        keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
+        keys_mask_self = ['mask_aa_obs']
+        keys_external = ['agent_qpos_qvel', 'mask_ab_obs', 'box_obs', 'mask_af_obs', 'food_obs', 'ramp_obs']
+        keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
+        keys_mask_external = ['mask_ab_obs', 'mask_af_obs', 'mask_ar_obs', 'lidar', 'mask_ab_obs_spoof', 'mask_af_obs_spoof']
 
+        env = self.construct_env()
 
         env.reset()
 
@@ -163,7 +168,7 @@ class GameEnvironment:
         env = GameRewardWrapper(env,
                                 n_hiders = self.team_players,
                                 n_seekers = self.team_players,
-                                rew_type = rew_type)
+                                rew_type = self.reward_type)
         
         env = PreparationPhase(env,
                                prep_fraction = self.preparation_time)
@@ -178,7 +183,8 @@ class GameEnvironment:
         
         # TODO: Constant observations given to hiders
         hider_obs = np.array([[1]] * self.team_players + [[0]] * self.team_players)
-        env = AddConstantObservationsWrapper(env, new_obs={'hider': hider_obs})
+        env = AddConstantObservationsWrapper(env,
+                                             new_obs = {'hider': hider_obs})
 
         # TODO: Food used as health
         env = AgentSiteObsMask2D(env,
@@ -190,10 +196,14 @@ class GameEnvironment:
                                 max_food_health = 1,
                                 food_rew_type = 'selfish',
                                 reward_scale = 1.0)
-        env = MaskActionWrapper(env, 'action_eat_food', ['mask_af_obs'])
-        env = MaskUnseenAction(env, 0, 'action_eat_food')
+        env = MaskActionWrapper(env,
+                                action_key = 'action_eat_food',
+                                mask_keys = ['mask_af_obs'])
+        env = MaskUnseenAction(env,
+                               team_idx = 0,
+                               action_key = 'action_eat_food')
         env = AlwaysEatWrapper(env,
-                               agent_idx_allowed = np.arange(n_players))
+                               agent_idx_allowed = np.arange(self.n_players))
         
         env = AgentGeomObsMask2D(env,
                                  pos_obs_key = 'ramp_pos',
@@ -201,40 +211,45 @@ class GameEnvironment:
                                  geom_idxs_obs_key = 'ramp_geom_idxs')
 
         env = GrabObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(n_boxes))] + ([f"ramp{i}:ramp" for i in range(n_ramps)]),
-                             radius_multiplier = lock_grab_radius / box_size,
-                             grab_exclusive = grab_exclusive,
+                             body_names = [f'moveable_box{i}' for i in range(np.max(self.n_boxes + self.n_walls))] + ([f"ramp{i}:ramp" for i in range(self.n_ramps)]),
+                             radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ['curr_n_boxes', 'curr_n_ramps'])
         
         env = LockObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(n_boxes))],
-                             agent_idx_allowed_to_lock = np.arange(n_players),
-                             lock_type = lock_type,
-                             radius_multiplier = lock_grab_radius / box_size,
+                             body_names = [f'moveable_box{i}' for i in range(np.max(self.n_boxes + self.n_walls))],
+                             agent_idx_allowed_to_lock = np.arange(self.n_players),
+                             lock_type = self.lock_type,
+                             radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ["curr_n_boxes"],
                              agent_allowed_to_lock_keys = None)
         
-        env = LockObjWrapper(env, body_names=[f'ramp{i}:ramp' for i in range(n_ramps)],
-                                 agent_idx_allowed_to_lock=np.arange(n_players),
-                                 lock_type=lock_type, ac_obs_prefix='ramp_',
-                                 radius_multiplier=lock_grab_radius / box_size,
-                                 obj_in_game_metadata_keys=['curr_n_ramps'],
-                                 agent_allowed_to_lock_keys=None)
+        env = LockObjWrapper(env,
+                             body_names = [f'ramp{i}:ramp' for i in range(self.n_ramps)],
+                             agent_idx_allowed_to_lock = np.arange(self.n_players),
+                             lock_type = self.lock_type, ac_obs_prefix='ramp_',
+                             radius_multiplier = self.grab_radius,
+                             obj_in_game_metadata_keys = ['curr_n_ramps'],
+                             agent_allowed_to_lock_keys = None)
         
         if self.lidar > 0:
             env = Lidar(env,
-                    n_lidar_per_agent = self.lidar,
-                    visualize_lidar = self.visualize_lidar)
+                        n_lidar_per_agent = self.lidar,
+                        visualize_lidar = self.visualize_lidar)
 
         env = SplitObservations(env,
                                 keys_self = keys_self + keys_mask_self,
                                 keys_copy = keys_copy,
                                 keys_self_matrices = keys_mask_self)
         
-        env = SpoofEntityWrapper(env, np.max(n_boxes), ['box_obs', 'you_lock', 'team_lock', 'obj_lock'], ['mask_ab_obs'])
-    
-        env = SpoofEntityWrapper(env, n_flags, ['food_obs'], ['mask_af_obs'])
-        keys_mask_external += ['mask_ab_obs_spoof', 'mask_af_obs_spoof']
+        env = SpoofEntityWrapper(env, 
+                                 total_n_entities = np.max(self.n_boxes + self.n_walls),
+                                 keys = ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
+                                 mask_keys = ['mask_ab_obs'])
+
+        env = SpoofEntityWrapper(env,
+                                 total_n_entities = self.n_flags,
+                                 keys = ['food_obs'],
+                                 mask_keys = ['mask_af_obs'])
         
         env = LockAllWrapper(env,
                              remove_object_specific_lock = True)
@@ -247,12 +262,14 @@ class GameEnvironment:
         
         env = DiscardMujocoExceptionEpisodes(env)
 
-        env = ConcatenateObsWrapper(env, {'agent_qpos_qvel': ['agent_qpos_qvel', 'hider', 'prep_obs'],
-                                        'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
-                                        'ramp_obs': ['ramp_obs'] + (['ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock'] if lock_ramp else [])})
+        env = ConcatenateObsWrapper(env, 
+                                    obs_groups = {'agent_qpos_qvel': ['agent_qpos_qvel', 'hider', 'prep_obs'],
+                                                  'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
+                                                  'ramp_obs': ['ramp_obs', 'ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock']})
         
-        env = SelectKeysWrapper(env, keys_self=keys_self,
-                                keys_other=keys_external + keys_mask_self + keys_mask_external)
+        env = SelectKeysWrapper(env,
+                                keys_self = keys_self,
+                                keys_other = keys_external + keys_mask_self + keys_mask_external)
 
         return env
 

@@ -74,18 +74,6 @@ class GameEnvironment:
         self.preparation_time = 0.4
         self.reward_type = 'joint_zero_sum'
 
-    def player_placement(self):
-        pass
-
-    def ramp_placement(self):
-        pass
-
-    def box_placement(self):
-        pass
-
-    def wall_placement(self):
-        pass
-
     def construct_env(self):
         env = Base(n_agents = self.n_players,
                    n_substeps = self.substeps,
@@ -102,7 +90,7 @@ class GameEnvironment:
                               p_door_dropout = self.door_dropout)
         env.add_module(walls)
 
-        agent_placement_fn = uniform_placement
+        agent_placement_fn = object_placement
         agents = Agents(n_agents = self.n_players,
                         placement_fn = agent_placement_fn,
                         color = self.team_colors[0] * self.team_players + self.team_colors[1] * self.team_players,
@@ -110,14 +98,14 @@ class GameEnvironment:
         env.add_module(agents)
         env.add_module(AgentManipulation())
 
-        ramp_placement_fn = uniform_placement
+        ramp_placement_fn = object_placement
         ramps = Ramps(n_ramps = self.n_flags,
                       placement_fn = ramp_placement_fn,
                       friction = self.object_friction,
                       pad_ramp_size = True)
         env.add_module(ramps)
 
-        box_placement_fn = uniform_placement
+        box_placement_fn = object_placement
         boxes = Boxes(n_boxes = self.n_boxes + self.n_walls,
                       n_elongated_boxes = self.n_walls,
                       placement_fn = box_placement_fn,
@@ -126,7 +114,7 @@ class GameEnvironment:
                       box_only_z_rot = True)
         env.add_module(boxes)
 
-        food_placement = uniform_placement
+        food_placement = object_placement
         flags = Food(n_food = self.n_flags,
                      food_size = self.flag_size,
                      placement_fn = food_placement)
@@ -345,6 +333,7 @@ class TrackStatWrapper(gym.Wrapper):
 
         return obs, rew, done, info
 
+
 '''
 Establishes game dynamics (see different reward types below).
 Args:
@@ -396,6 +385,7 @@ class GameRewardWrapper(gym.Wrapper):
         rew += this_rew
         return obs, rew, done, info
 
+
 '''
 Masks a (binary) action with some probability if agent or any of its teammates was being observed
 by opponents at any of the last n_latency time step.
@@ -427,6 +417,7 @@ class MaskUnseenAction(gym.Wrapper):
         self.prev_obs, rew, done, info = self.env.step(action)
         return deepcopy(self.prev_obs), rew, done, info
 
+
 '''
 Places object inside bounds.
 '''
@@ -437,6 +428,7 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
     pos = np.array([random_state.randint(bounds[0][0], bounds[1][0]),
                     random_state.randint(bounds[0][1], bounds[1][1])])
     return pos
+
 
 '''
 Makes the environment.

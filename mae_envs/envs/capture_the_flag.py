@@ -13,9 +13,7 @@ from mae_envs.wrappers.manipulation import (GrabObjWrapper, GrabClosestWrapper,
 from mae_envs.wrappers.lidar import Lidar
 from mae_envs.wrappers.line_of_sight import (AgentAgentObsMask2D, AgentGeomObsMask2D,
                                              AgentSiteObsMask2D)
-from mae_envs.wrappers.prep_phase import (PreparationPhase, NoActionsInPrepPhase,
-                                          MaskPrepPhaseAction)
-from mae_envs.wrappers.limit_mvmnt import RestrictAgentsRect
+from mae_envs.wrappers.prep_phase import PreparationPhase
 from mae_envs.wrappers.team import TeamMembership
 from mae_envs.wrappers.food import FoodHealthWrapper, AlwaysEatWrapper
 from mae_envs.modules.agents import Agents, AgentManipulation
@@ -444,5 +442,5 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
 Makes the environment.
 '''
 def make_env():
-    env_generator = GameEnvironment(lidar = 0)
+    env_generator = GameEnvironment(lidar = 5, visualize_lidar = True)
     return env_generator.make_env()

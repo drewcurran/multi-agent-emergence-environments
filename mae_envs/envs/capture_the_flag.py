@@ -212,7 +212,8 @@ class GameEnvironment:
         env = LockObjWrapper(env,
                              body_names = [f'ramp{i}:ramp' for i in range(self.n_ramps)],
                              agent_idx_allowed_to_lock = np.arange(self.n_players),
-                             lock_type = self.lock_type, ac_obs_prefix='ramp_',
+                             lock_type = self.lock_type, 
+                             ac_obs_prefix = 'ramp_',
                              radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ['curr_n_ramps'],
                              agent_allowed_to_lock_keys = None)

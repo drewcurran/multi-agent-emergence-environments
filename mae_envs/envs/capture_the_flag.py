@@ -1,6 +1,7 @@
 import gym
 import numpy as np
 from copy import deepcopy
+from functools import partial
 from mae_envs.envs.base import Base
 from mae_envs.wrappers.multi_agent import (SplitMultiAgentActions,
                                            SplitObservations, SelectKeysWrapper)
@@ -28,7 +29,7 @@ from mae_envs.modules.util import uniform_placement
 Sets up the game environment.
 '''
 class GameEnvironment:
-    def __init__(self, lidar = 0, visualize_lidar = False):
+    def __init__(self, lidar = 0, visualize_lidar = False):       
         # World constants
         self.scenario = 'ctf'
         self.floor_size = 10
@@ -90,7 +91,10 @@ class GameEnvironment:
                               p_door_dropout = self.door_dropout)
         env.add_module(walls)
 
-        agent_placement_fn = object_placement
+        agent_placement_fn = [partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 3, self.grid_size - self.grid_size // 3 - 1)]),
+                              partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 3, self.grid_size - self.grid_size // 3 - 1)]),
+                              partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 3 - 1, self.grid_size // 3)]),
+                              partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 3 - 1, self.grid_size // 3)])]
         agents = Agents(n_agents = self.n_players,
                         placement_fn = agent_placement_fn,
                         color = self.team_colors[0] * self.team_players + self.team_colors[1] * self.team_players,
@@ -98,7 +102,10 @@ class GameEnvironment:
         env.add_module(agents)
         env.add_module(AgentManipulation())
 
-        ramp_placement_fn = object_placement
+        ramp_placement_fn = [partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 6, self.grid_size - self.grid_size // 6 - 1)]),
+                             partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 6, self.grid_size - self.grid_size // 6 - 1)]),
+                             partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 6 - 1, self.grid_size // 6)]),
+                             partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 6 - 1, self.grid_size // 6)])]
         ramps = Ramps(n_ramps = self.n_flags,
                       placement_fn = ramp_placement_fn,
                       friction = self.object_friction,
@@ -133,16 +140,12 @@ class GameEnvironment:
         
         return env
     
-    def make_env(self):
+    def govern_env(self, env):
         keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
         keys_mask_self = ['mask_aa_obs']
         keys_external = ['agent_qpos_qvel', 'mask_ab_obs', 'box_obs', 'mask_af_obs', 'food_obs', 'ramp_obs']
         keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
         keys_mask_external = ['mask_ab_obs', 'mask_af_obs', 'mask_ar_obs', 'lidar', 'mask_ab_obs_spoof', 'mask_af_obs_spoof']
-
-        env = self.construct_env()
-
-        env.reset()
 
         env = SplitMultiAgentActions(env)
 
@@ -426,8 +429,16 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
     if bounds == None:
         return uniform_placement(grid, obj_size, metadata, random_state)
 
-    pos = np.array([random_state.randint(bounds[0][0], bounds[1][0]),
-                    random_state.randint(bounds[0][1], bounds[1][1])])
+    print(bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1])
+
+    minX = min(bounds[0][0], bounds[1][0])
+    maxX = max(bounds[0][0], bounds[1][0])
+
+    minY = min(bounds[0][1], bounds[1][1])
+    maxY = max(bounds[0][1], bounds[1][1])
+    
+    pos = np.array([random_state.randint(minX, maxX),
+                    random_state.randint(minY, maxY)])
     return pos
 
 
@@ -436,4 +447,7 @@ Makes the environment.
 '''
 def make_env():
     env_generator = GameEnvironment(lidar = 5, visualize_lidar = True)
-    return env_generator.make_env()
+    env = env_generator.construct_env()
+    env.reset()
+    env = env_generator.govern_env(env)
+    return env

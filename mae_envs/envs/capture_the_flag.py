@@ -76,7 +76,6 @@ class GameEnvironment:
         self.reward_type = 'joint_zero_sum'
 
     def construct_env(self):
-        print("Base")
         env = Base(n_agents = self.n_players,
                    n_substeps = self.substeps,
                    horizon = self.horizon,
@@ -85,7 +84,6 @@ class GameEnvironment:
                    action_lims = self.action_lims,
                    deterministic_mode = self.deterministic)
         
-        print("Walls")
         walls = WallScenarios(grid_size = self.grid_size,
                               door_size = self.door_size,
                               scenario = self.scenario,
@@ -93,7 +91,6 @@ class GameEnvironment:
                               p_door_dropout = self.door_dropout)
         env.add_module(walls)
 
-        print("Agents")
         agent_placement_fn = [partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 3, self.grid_size - self.grid_size // 3 - 1)]),
                               partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 3, self.grid_size - self.grid_size // 3 - 1)]),
                               partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 3 - 1, self.grid_size // 3)]),
@@ -105,7 +102,6 @@ class GameEnvironment:
         env.add_module(agents)
         env.add_module(AgentManipulation())
 
-        print("Ramps")
         ramp_placement_fn = [partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 6, self.grid_size - self.grid_size // 6 - 1)]),
                              partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 6, self.grid_size - self.grid_size // 6 - 1)]),
                              partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 6 - 1, self.grid_size // 6)]),

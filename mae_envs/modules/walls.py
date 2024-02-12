@@ -384,8 +384,8 @@ class WallScenarios(EnvModule):
                 This is just used for pretty rendering
     '''
     @store_args
-    def __init__(self, grid_size, door_size, scenario, friction=None, p_door_dropout=0.0,
-                 low_outside_walls=False):
+    def __init__(self, grid_size, door_size, scenario, walls=None, walls_to_split=None,
+                 friction=None, p_door_dropout=0.0, low_outside_walls=False):
         assert scenario in ['var_quadrant', 'quadrant', 'half', 'var_tri', 'empty', 'ctf']
 
     def build_world_step(self, env, floor, floor_size):
@@ -405,26 +405,8 @@ class WallScenarios(EnvModule):
             else:
                 walls_to_split = new_walls
         elif self.scenario == 'ctf':
-            q_size = int(0.5 * self.grid_size)
-            env.metadata['quadrant_size'] = q_size
-            walls = [
-                Wall([q_size, q_size // 2], [q_size, 3 * q_size // 2]),
-
-                Wall([2 * q_size // 3, q_size // 2], [2 * q_size // 3, 0]),
-                Wall([self.grid_size - 2 * q_size // 3, self.grid_size - q_size // 2], [self.grid_size - 2 * q_size // 3, self.grid_size - 1]),
-
-                Wall([q_size // 10, 4 * q_size // 5], [2 * q_size // 5, 4 * q_size // 5]),
-                Wall([q_size // 10, self.grid_size - 4 * q_size // 5], [2 * q_size // 5, self.grid_size - 4 * q_size // 5]),
-                Wall([self.grid_size - q_size // 10, 4 * q_size // 5], [self.grid_size - 2 * q_size // 5, 4 * q_size // 5]),
-                Wall([self.grid_size - q_size // 10, self.grid_size - 4 * q_size // 5], [self.grid_size - 2 * q_size // 5, self.grid_size - 4 * q_size // 5]),
-            ]
-            walls_to_split = [
-                Wall([2 * q_size // 3, q_size // 2], [self.grid_size - 2 * q_size // 3, q_size // 2]),
-                Wall([2 * q_size // 3, self.grid_size - q_size // 2], [self.grid_size - 2 * q_size // 3, self.grid_size - q_size // 2]),
-                
-                Wall([self.grid_size - 2 * q_size // 3, q_size // 2], [self.grid_size - 2 * q_size // 3, 0]),
-                Wall([2 * q_size // 3, self.grid_size - q_size // 2], [2 * q_size // 3, self.grid_size - 1]),
-            ]
+            walls = self.walls.copy()
+            walls_to_split = self.walls_to_split.copy()
         elif self.scenario == 'half':
             walls_to_split += [Wall([self.grid_size - 1, self.grid_size // 2],
                                     [0, self.grid_size // 2])]
@@ -492,7 +474,6 @@ class WallScenarios(EnvModule):
         new_walls, doors = split_walls(walls_to_split, self.door_size,
                                        random_state=env._random_state)
         walls += new_walls
-
         env.metadata['doors'] = np.array(doors)
 
         # Convert doors into mujoco frame
@@ -501,8 +482,10 @@ class WallScenarios(EnvModule):
         else:
             self.door_obs = None
 
+        # Add walls
         walls_to_mujoco(floor, floor_size, self.grid_size, walls, friction=self.friction)
         add_walls_to_grid(env.placement_grid, walls)
+        
         return True
 
     def observation_step(self, env, sim):

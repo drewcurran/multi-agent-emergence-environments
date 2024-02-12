@@ -35,7 +35,7 @@ class Boxes(EnvModule):
     @store_args
     def __init__(self, n_boxes, n_elongated_boxes=0, placement_fn=None,
                  box_size=0.5, box_mass=1.0, friction=None, box_only_z_rot=False,
-                 boxid_obs=True, boxsize_obs=False, polar_obs=True, mark_box_corners=False):
+                 boxid_obs=True, boxsize_obs=False, polar_obs=True, mark_box_corners=False, alignment=None):
         if type(n_boxes) not in [tuple, list, np.ndarray]:
             self.n_boxes = [n_boxes, n_boxes]
         if type(n_elongated_boxes) not in [tuple, list, np.ndarray]:
@@ -56,7 +56,10 @@ class Boxes(EnvModule):
         self.box_size_array = self.box_size * np.ones((self.curr_n_boxes, 3))
         if self.curr_n_elongated_boxes > 0:
             # sample number of x-aligned boxes
-            n_xaligned = env._random_state.randint(self.curr_n_elongated_boxes + 1)
+            if self.alignment == None:
+                n_xaligned = env._random_state.randint(self.curr_n_elongated_boxes + 1)
+            else:
+                n_xaligned = self.alignment
             self.box_size_array[:n_xaligned, :] = self.box_size * np.array([3.3, 0.3, 1.0])
             self.box_size_array[n_xaligned:self.curr_n_elongated_boxes, :] = (self.box_size * np.array([0.3, 3.3, 1.0]))
         env.metadata['box_size_array'] = self.box_size_array

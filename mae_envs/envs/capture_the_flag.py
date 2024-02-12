@@ -18,7 +18,7 @@ from mae_envs.wrappers.prep_phase import PreparationPhase
 from mae_envs.wrappers.team import TeamMembership
 from mae_envs.wrappers.food import FoodHealthWrapper, AlwaysEatWrapper
 from mae_envs.modules.agents import Agents, AgentManipulation
-from mae_envs.modules.walls import WallScenarios
+from mae_envs.modules.walls import Wall, WallScenarios
 from mae_envs.modules.objects import Boxes, Ramps, LidarSites
 from mae_envs.modules.food import Food
 from mae_envs.modules.world import FloorAttributes, WorldConstants
@@ -33,7 +33,7 @@ class GameEnvironment:
         # World constants
         self.scenario = 'ctf'
         self.floor_size = 10
-        self.grid_size = 50
+        self.grid_size = 51
         self.door_size = 2
         self.door_dropout = 0
         self.floor_friction = 0.2
@@ -47,7 +47,7 @@ class GameEnvironment:
         # Team constants
         self.teams = 2
         self.team_players = 2
-        self.team_ramps = 1
+        self.team_ramps = 2
         self.team_boxes = 1
         self.team_walls = 1
         self.team_flags = 1
@@ -83,18 +83,40 @@ class GameEnvironment:
                    grid_size = self.grid_size,
                    action_lims = self.action_lims,
                    deterministic_mode = self.deterministic)
-        
+
+        q_size = int(0.5 * self.grid_size)
+        g = self.grid_size
+        grid_size = g
         walls = WallScenarios(grid_size = self.grid_size,
                               door_size = self.door_size,
                               scenario = self.scenario,
+                              walls = [
+                                    Wall([coords(g, 0), coords(g, -1/2)], [coords(g, 0), coords(g, 1/2)]),
+                                    Wall([coords(g, -1/3), coords(g, -1)], [coords(g, -1/3), coords(g, -1/2)]),
+                                    Wall([coords(g, 1/3), coords(g, 1)], [coords(g, 1/3), coords(g, 1/2)]),
+                                    Wall([coords(g, -9/10), coords(g, -1/6)], [coords(g, -3/5), coords(g, -1/6)]),
+                                    Wall([coords(g, -9/10), coords(g, 1/6)], [coords(g, -3/5), coords(g, 1/6)]),
+                                    Wall([coords(g, -9/10), coords(g, -1/6)], [coords(g, -9/10), coords(g, 1/6)]),
+                                    Wall([coords(g, 9/10), coords(g, -1/6)], [coords(g, 3/5), coords(g, -1/6)]),
+                                    Wall([coords(g, 9/10), coords(g, 1/6)], [coords(g, 3/5), coords(g, 1/6)]),
+                                    Wall([coords(g, 9/10), coords(g, -1/6)], [coords(g, 9/10), coords(g, 1/6)]),
+                              ],
+                              walls_to_split = [
+                                    Wall([coords(g, -1/3), coords(g, -1/2)], [coords(g, 1/3), coords(g, -1/2)]),
+                                    Wall([coords(g, -1/3), coords(g, 1/2)], [coords(g, 1/3), coords(g, 1/2)]),
+                                    Wall([coords(g, -1/3), coords(g, 1)], [coords(g, -1/3), coords(g, 1/2)]),
+                                    Wall([coords(g, 1/3), coords(g, -1)], [coords(g, 1/3), coords(g, -1/2)]),
+                              ],
                               friction = self.object_friction,
                               p_door_dropout = self.door_dropout)
         env.add_module(walls)
 
-        agent_placement_fn = [partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 3, self.grid_size - self.grid_size // 3 - 1)]),
-                              partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 3, self.grid_size - self.grid_size // 3 - 1)]),
-                              partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 3 - 1, self.grid_size // 3)]),
-                              partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 3 - 1, self.grid_size // 3)])]
+        agent_placement_fn = [
+            partial(object_placement, bounds = ([coords(g, -1), coords(g, 1)], [coords(g, -2/3), coords(g, 2/3)])),
+            partial(object_placement, bounds = ([coords(g, -1), coords(g, 1)], [coords(g, -2/3), coords(g, 2/3)])),
+            partial(object_placement, bounds = ([coords(g, 1), coords(g, -1)], [coords(g, 2/3), coords(g, -2/3)])),
+            partial(object_placement, bounds = ([coords(g, 1), coords(g, -1)], [coords(g, 2/3), coords(g, -2/3)])),
+        ]
         agents = Agents(n_agents = self.n_players,
                         placement_fn = agent_placement_fn,
                         color = self.team_colors[0] * self.team_players + self.team_colors[1] * self.team_players,
@@ -102,29 +124,40 @@ class GameEnvironment:
         env.add_module(agents)
         env.add_module(AgentManipulation())
 
-        ramp_placement_fn = [partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 6, self.grid_size - self.grid_size // 6 - 1)]),
-                             partial(object_placement, bounds = [(0, self.grid_size - 1), (self.grid_size // 6, self.grid_size - self.grid_size // 6 - 1)]),
-                             partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 6 - 1, self.grid_size // 6)]),
-                             partial(object_placement, bounds = [(self.grid_size - 1, 0), (self.grid_size - self.grid_size // 6 - 1, self.grid_size // 6)])]
-        ramps = Ramps(n_ramps = self.n_flags,
+        ramp_placement_fn = [
+            partial(object_placement, bounds = ([coords(g, -1/3), coords(g, -1/2)], [coords(g, 0), coords(g, 1/2)])),
+            partial(object_placement, bounds = ([coords(g, -1/3), coords(g, 1)], [coords(g, 1/3), coords(g, 1/2)])),
+            partial(object_placement, bounds = ([coords(g, 1/3), coords(g, -1/2)], [coords(g, 0), coords(g, 1/2)])),
+            partial(object_placement, bounds = ([coords(g, 1/3), coords(g, -1)], [coords(g, -1/3), coords(g, -1/2)])),
+        ]
+        ramps = Ramps(n_ramps = self.n_ramps,
                       placement_fn = ramp_placement_fn,
                       friction = self.object_friction,
                       pad_ramp_size = True)
         env.add_module(ramps)
 
-        box_placement_fn = object_placement
+        box_placement_fn = [
+            partial(object_placement, bounds = ([coords(g, -3/5), coords(g, -1/5)], [coords(g, -2/5), coords(g, 1/5)])),
+            partial(object_placement, bounds = ([coords(g, 3/5), coords(g, -1/5)], [coords(g, 2/5), coords(g, 1/5)])),
+            partial(object_placement, bounds = ([coords(g, -1/3), coords(g, -1/2)], [coords(g, 0), coords(g, 1/2)])),
+            partial(object_placement, bounds = ([coords(g, 1/3), coords(g, -1/2)], [coords(g, 0), coords(g, 1/2)])),
+        ]
         boxes = Boxes(n_boxes = self.n_boxes + self.n_walls,
                       n_elongated_boxes = self.n_walls,
                       placement_fn = box_placement_fn,
                       friction = self.floor_friction,
                       boxid_obs = False,
-                      box_only_z_rot = True)
+                      box_only_z_rot = True,
+                      alignment = 0)
         env.add_module(boxes)
 
-        food_placement = object_placement
+        food_placement_fn = [
+            partial(object_placement, bounds = ([coords(g, -3/4), coords(g, 0)],)),
+            partial(object_placement, bounds = ([coords(g, 3/4), coords(g, 0)],)),
+        ]
         flags = Food(n_food = self.n_flags,
                      food_size = self.flag_size,
-                     placement_fn = food_placement)
+                     placement_fn = food_placement_fn)
         env.add_module(flags)
 
         friction = FloorAttributes(friction = self.floor_friction)
@@ -388,6 +421,9 @@ class GameRewardWrapper(gym.Wrapper):
         this_rew *= self.reward_scale
         rew += this_rew
         return obs, rew, done, info
+    
+    def reset(self):
+        return self.env.reset()
 
 
 '''
@@ -425,19 +461,26 @@ class MaskUnseenAction(gym.Wrapper):
 '''
 Places object inside bounds.
 '''
+def coords(grid_size, proportion):
+    return int((proportion + 1) / 2 * grid_size - 0.5)
+
+
+'''
+Places object inside bounds.
+'''
 def object_placement(grid, obj_size, metadata, random_state, bounds = None):
     if bounds == None:
         return uniform_placement(grid, obj_size, metadata, random_state)
 
+    if len(bounds) == 1:
+        return np.array([bounds[0][0], bounds[0][1]])
+    
     minX = min(bounds[0][0], bounds[1][0])
     maxX = max(bounds[0][0], bounds[1][0])
-
     minY = min(bounds[0][1], bounds[1][1])
     maxY = max(bounds[0][1], bounds[1][1])
-    
-    pos = np.array([random_state.randint(minX, maxX),
+    return np.array([random_state.randint(minX, maxX),
                     random_state.randint(minY, maxY)])
-    return pos
 
 
 '''

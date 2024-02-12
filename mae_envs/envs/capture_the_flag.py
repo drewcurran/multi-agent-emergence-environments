@@ -112,10 +112,10 @@ class GameEnvironment:
         # Add agents to the environment
         agents = Agents(n_agents = self.n_players,
                         placement_fn = [
-                            partial(object_placement, bounds = ([coords(self.grid_size, -1), coords(self.grid_size, 1)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, -1), coords(self.grid_size, 1)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 1), coords(self.grid_size, -1)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 1), coords(self.grid_size, -1)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
+                            partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
+                            partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
+                            partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
+                            partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
                         ],
                         color = self.team_colors[0] * self.team_players + self.team_colors[1] * self.team_players,
                         friction = self.object_friction)
@@ -126,9 +126,9 @@ class GameEnvironment:
         ramps = Ramps(n_ramps = self.n_ramps,
                       placement_fn = [
                             partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, 1)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)])),
+                            partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, 9/10)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)])),
                             partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)])),
+                            partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -9/10)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)])),
                       ],
                       friction = self.object_friction,
                       pad_ramp_size = True)
@@ -156,7 +156,8 @@ class GameEnvironment:
                           placement_fn = [
                             partial(object_placement, bounds = ([coords(self.grid_size, -3/4), coords(self.grid_size, 0)],)),
                             partial(object_placement, bounds = ([coords(self.grid_size, 3/4), coords(self.grid_size, 0)],)),
-                          ])
+                          ],
+                          rgba = self.team_colors)
         env.add_module(flags)
 
         # Add LIDAR visualization to the environment

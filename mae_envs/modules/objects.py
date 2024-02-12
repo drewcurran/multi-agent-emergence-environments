@@ -233,7 +233,7 @@ class Cylinders(EnvModule):
     '''
     @store_args
     def __init__(self, n_objects, diameter, height, make_static=False,
-                 placement_fn=None, rgba=[1., 1., 1., 1.]):
+                 placement_fn=None, rgba=None):
         if type(diameter) not in [list, np.ndarray]:
             self.diameter = [diameter, diameter]
         if type(height) not in [list, np.ndarray]:
@@ -246,7 +246,10 @@ class Cylinders(EnvModule):
         obj_size = (diameter, height, 0)
         successful_placement = True
         for i in range(self.n_objects):
-            geom = Geom('cylinder', obj_size, name=f'{default_name}{i}', rgba=self.rgba)
+            rgba = (self.rgba[i][0]
+                    if isinstance(self.rgba, list)
+                    else self.rgba)
+            geom = Geom('cylinder', obj_size, name=f'{default_name}{i}', rgba=rgba)
             if self.make_static:
                 geom.mark_static()
 

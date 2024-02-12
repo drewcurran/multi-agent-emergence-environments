@@ -180,11 +180,20 @@ class GameEnvironment:
         return env
     
     def govern_env(self, env):
+        # Self constants
         keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
+
+        # Masked self constants
         keys_mask_self = ['mask_aa_obs']
+
+        # External constants
         keys_external = ['agent_qpos_qvel', 'mask_ab_obs', 'box_obs', 'mask_af_obs', 'flag_obs', 'ramp_obs']
-        keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
+
+        # Masked external constants
         keys_mask_external = ['mask_ab_obs', 'mask_af_obs', 'mask_ar_obs', 'lidar', 'mask_ab_obs_spoof', 'mask_af_obs_spoof']
+
+        # Copy constants
+        keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
 
         # Add physics to the environment
         friction = FloorAttributes(friction = self.floor_friction)
@@ -192,7 +201,6 @@ class GameEnvironment:
         gravity = WorldConstants(gravity = self.gravity)
         env.add_module(gravity)
 
-        # 
         env = SplitMultiAgentActions(env)
 
         env = TeamMembership(env, 

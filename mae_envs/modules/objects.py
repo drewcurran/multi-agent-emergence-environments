@@ -163,7 +163,7 @@ class Ramps(EnvModule):
 
         for i in range(self.n_ramps):
             char = chr(ord('A') + i % 26)
-            geom = geom = ObjFromXML('ramp', name=f"ramp{i}")
+            geom = ObjFromXML('ramp', name=f"ramp{i}")
             geom.set_material(Material(texture="chars/" + char + ".png"))
             if self.friction is not None:
                 geom.add_transform(set_geom_attr_transform('friction', self.friction))

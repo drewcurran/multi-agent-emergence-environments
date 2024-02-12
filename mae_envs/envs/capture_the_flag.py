@@ -19,8 +19,7 @@ from mae_envs.wrappers.team import TeamMembership
 from mae_envs.wrappers.food import FoodHealthWrapper, AlwaysEatWrapper
 from mae_envs.modules.agents import Agents, AgentManipulation
 from mae_envs.modules.walls import Wall, WallScenarios
-from mae_envs.modules.objects import Boxes, Ramps, LidarSites
-from mae_envs.modules.food import Food
+from mae_envs.modules.objects import Boxes, Ramps, Cylinders, LidarSites
 from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import uniform_placement
 
@@ -40,7 +39,7 @@ class GameEnvironment:
         self.object_friction = 0.01
         self.gravity = [0, 0, -50]
         self.box_size = 0.5
-        self.flag_size = 0.1
+        self.flag_size = 0.2
         self.grab_radius = 0.25 / self.box_size
         self.lock_type = 'any_lock_specific'
 
@@ -90,21 +89,21 @@ class GameEnvironment:
                               door_size = self.door_size,
                               scenario = self.scenario,
                               walls = [
-                                    Wall([coords(self.grid_size, 0), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)]),
-                                    Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)]),
-                                    Wall([coords(self.grid_size, 1/3), coords(self.grid_size, 1)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
-                                    Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, -1/6)]),
-                                    Wall([coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, 1/6)]),
-                                    Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)]),
-                                    Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, -1/6)]),
-                                    Wall([coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, 1/6)]),
-                                    Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)]),
+                                Wall([coords(self.grid_size, 0), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)]),
+                                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)]),
+                                Wall([coords(self.grid_size, 1/3), coords(self.grid_size, 1)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
+                                Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, -1/6)]),
+                                Wall([coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, 1/6)]),
+                                Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)]),
+                                Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, -1/6)]),
+                                Wall([coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, 1/6)]),
+                                Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)]),
                               ],
                               walls_to_split = [
-                                    Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
-                                    Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
-                                    Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1)], [coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)]),
-                                    Wall([coords(self.grid_size, 1/3), coords(self.grid_size, -1)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
+                                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
+                                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
+                                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1)], [coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)]),
+                                Wall([coords(self.grid_size, 1/3), coords(self.grid_size, -1)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
                               ],
                               friction = self.object_friction,
                               p_door_dropout = self.door_dropout)
@@ -139,10 +138,10 @@ class GameEnvironment:
         boxes = Boxes(n_boxes = self.n_boxes + self.n_walls,
                       n_elongated_boxes = self.n_walls,
                       placement_fn = [
-                            partial(object_placement, bounds = ([coords(self.grid_size, -3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, -2/5), coords(self.grid_size, 1/5)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, 2/5), coords(self.grid_size, 1/5)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                        partial(object_placement, bounds = ([coords(self.grid_size, -3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, -2/5), coords(self.grid_size, 1/5)])),
+                        partial(object_placement, bounds = ([coords(self.grid_size, 3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, 2/5), coords(self.grid_size, 1/5)])),
+                        partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                        partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
                       ],
                       friction = self.floor_friction,
                       boxid_obs = False,
@@ -151,19 +150,14 @@ class GameEnvironment:
         env.add_module(boxes)
 
         # Add flags to the environment
-        flags = Food(n_food = self.n_flags,
-                     food_size = self.flag_size,
-                     placement_fn = [
+        flags = Cylinders(n_objects = self.n_flags,
+                          diameter = self.flag_size,
+                          height = self.flag_size * 2,
+                          placement_fn = [
                             partial(object_placement, bounds = ([coords(self.grid_size, -3/4), coords(self.grid_size, 0)],)),
                             partial(object_placement, bounds = ([coords(self.grid_size, 3/4), coords(self.grid_size, 0)],)),
-                     ])
+                          ])
         env.add_module(flags)
-
-        # Add physics to the environment
-        friction = FloorAttributes(friction = self.floor_friction)
-        env.add_module(friction)
-        gravity = WorldConstants(gravity = self.gravity)
-        env.add_module(gravity)
 
         # Add LIDAR visualization to the environment
         if self.lidar > 0 and self.visualize_lidar:
@@ -176,10 +170,17 @@ class GameEnvironment:
     def govern_env(self, env):
         keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
         keys_mask_self = ['mask_aa_obs']
-        keys_external = ['agent_qpos_qvel', 'mask_ab_obs', 'box_obs', 'mask_af_obs', 'food_obs', 'ramp_obs']
+        keys_external = ['agent_qpos_qvel', 'mask_ab_obs', 'box_obs', 'mask_af_obs', 'flag_obs', 'ramp_obs']
         keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
         keys_mask_external = ['mask_ab_obs', 'mask_af_obs', 'mask_ar_obs', 'lidar', 'mask_ab_obs_spoof', 'mask_af_obs_spoof']
 
+        # Add physics to the environment
+        friction = FloorAttributes(friction = self.floor_friction)
+        env.add_module(friction)
+        gravity = WorldConstants(gravity = self.gravity)
+        env.add_module(gravity)
+
+        # 
         env = SplitMultiAgentActions(env)
 
         env = TeamMembership(env, 
@@ -207,25 +208,6 @@ class GameEnvironment:
         hider_obs = np.array([[1]] * self.team_players + [[0]] * self.team_players)
         env = AddConstantObservationsWrapper(env,
                                              new_obs = {'hider': hider_obs})
-
-        # TODO: Food used as health
-        env = AgentSiteObsMask2D(env,
-                                 pos_obs_key = 'food_pos',
-                                 mask_obs_key = 'mask_af_obs')
-        env = FoodHealthWrapper(env,
-                                respawn_time = np.inf,
-                                eat_thresh = self.flag_size,
-                                max_food_health = 1,
-                                food_rew_type = 'selfish',
-                                reward_scale = 1.0)
-        env = MaskActionWrapper(env,
-                                action_key = 'action_eat_food',
-                                mask_keys = ['mask_af_obs'])
-        env = MaskUnseenAction(env,
-                               team_idx = 0,
-                               action_key = 'action_eat_food')
-        env = AlwaysEatWrapper(env,
-                               agent_idx_allowed = np.arange(self.n_players))
         
         env = AgentGeomObsMask2D(env,
                                  pos_obs_key = 'ramp_pos',
@@ -268,11 +250,6 @@ class GameEnvironment:
                                  total_n_entities = np.max(self.n_boxes + self.n_walls),
                                  keys = ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                                  mask_keys = ['mask_ab_obs'])
-
-        env = SpoofEntityWrapper(env,
-                                 total_n_entities = self.n_flags,
-                                 keys = ['food_obs'],
-                                 mask_keys = ['mask_af_obs'])
         
         env = LockAllWrapper(env,
                              remove_object_specific_lock = True)

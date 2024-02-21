@@ -240,10 +240,13 @@ class Cylinders(EnvModule):
             self.height = [height, height]
 
     def build_world_step(self, env, floor, floor_size):
+        env.metadata['curr_n_flags'] = np.ones((self.n_objects)).astype(np.bool)
+
         default_name = 'static_cylinder' if self.make_static else 'moveable_cylinder'
         diameter = env._random_state.uniform(self.diameter[0], self.diameter[1])
         height = env._random_state.uniform(self.height[0], self.height[1])
         obj_size = (diameter, height, 0)
+
         successful_placement = True
         for i in range(self.n_objects):
             rgba = (self.rgba[i][0]

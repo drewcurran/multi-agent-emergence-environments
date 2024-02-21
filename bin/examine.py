@@ -29,10 +29,10 @@ def main(argv):
     Example uses:
         bin/examine.py hide_and_seek
         bin/examine.py mae_envs/envs/base.py
-        bin/examine.py base n_boxes=6 n_ramps=2 n_agents=3
-        bin/examine.py my_env_jsonnet.jsonnet
+        bin/examine.py mae_envs/envs/base n_boxes=6 n_ramps=2 n_agents=3
+        bin/examine.py mae_envs/envs/my_env_jsonnet.jsonnet
         bin/examine.py my_env_jsonnet.jsonnet my_policy.npz
-        bin/examine.py hide_and_seek my_policy.npz n_hiders=3 n_seekers=2 n_boxes=8 n_ramps=1
+        bin/examine.py mae_envs/envs/hide_and_seek.py my_policy.npz n_hiders=3 n_seekers=2 n_boxes=8 n_ramps=1
     '''
     names, kwargs = parse_arguments(argv)
 

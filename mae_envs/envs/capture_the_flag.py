@@ -411,6 +411,8 @@ class GameRewardWrapper(gym.Wrapper):
 
         self.metadata['n_hiders'] = n_hiders
         self.metadata['n_seekers'] = n_seekers
+        self.metadata['hiders_score'] = 0
+        self.metadata['seekers_score'] = 0
 
         # Agent names are used to plot agent-specific rewards on tensorboard
         self.unwrapped.agent_names = [f'hider{i}' for i in range(self.n_hiders)] + \
@@ -419,9 +421,12 @@ class GameRewardWrapper(gym.Wrapper):
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
 
+        
+
+        difference = self.metadata['hiders_score'] - self.metadata['seekers_score']
         this_rew = np.ones((self.n_agents,))
-        this_rew[:self.n_hiders][np.any(obs['mask_aa_obs'][self.n_hiders:, :self.n_hiders], 0)] = -1.0
-        this_rew[self.n_hiders:][~np.any(obs['mask_aa_obs'][self.n_hiders:, :self.n_hiders], 1)] = -1.0
+        this_rew[:self.n_hiders] = difference
+        this_rew[self.n_hiders:] = -difference
 
         if self.rew_type == 'joint_mean':
             this_rew[:self.n_hiders] = this_rew[:self.n_hiders].mean()

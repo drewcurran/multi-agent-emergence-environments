@@ -413,6 +413,7 @@ class GameRewardWrapper(gym.Wrapper):
         self.metadata['n_seekers'] = n_seekers
         self.metadata['hiders_score'] = 0
         self.metadata['seekers_score'] = 0
+        self.metadata['prev_score_diff'] = 0
 
         # Agent names are used to plot agent-specific rewards on tensorboard
         self.unwrapped.agent_names = [f'hider{i}' for i in range(self.n_hiders)] + \
@@ -421,12 +422,14 @@ class GameRewardWrapper(gym.Wrapper):
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
 
-        
+        # TODO: Implement collisions
+        print(self.metadata)
 
         difference = self.metadata['hiders_score'] - self.metadata['seekers_score']
         this_rew = np.ones((self.n_agents,))
-        this_rew[:self.n_hiders] = difference
-        this_rew[self.n_hiders:] = -difference
+        this_rew[:self.n_hiders] = difference - self.metadata['prev_score_diff'] / 2
+        this_rew[self.n_hiders:] = self.metadata['prev_score_diff'] / 2 - difference
+        self.metadata['prev_score_diff'] = difference
 
         if self.rew_type == 'joint_mean':
             this_rew[:self.n_hiders] = this_rew[:self.n_hiders].mean()

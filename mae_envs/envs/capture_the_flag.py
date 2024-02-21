@@ -195,30 +195,39 @@ class GameEnvironment:
         # Copy constants
         keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
 
-        # Add physics to the environment
+        # Add floor physics to the environment
         friction = FloorAttributes(friction = self.floor_friction)
         env.add_module(friction)
+
+        # Add gravity to the environment
         gravity = WorldConstants(gravity = self.gravity)
         env.add_module(gravity)
 
+        # Creates a dictionary for agent actions
         env = SplitMultiAgentActions(env)
-
+        
+        # Assign team membership for each agent
         env = TeamMembership(env, 
                              team_index = np.append(np.zeros((self.team_players,)), np.ones((self.team_players,))))
         
+        # Add masks for agent-to-agent observations
         env = AgentAgentObsMask2D(env)
 
+        # Apply reward functions for the game
         env = GameRewardWrapper(env,
                                 n_hiders = self.team_players,
                                 n_seekers = self.team_players,
                                 rew_type = self.reward_type)
         
+        # TODO: No need for prep phase
         env = PreparationPhase(env,
                                prep_fraction = self.preparation_time)
         
+        # Discretize agent actions
         env = DiscretizeActionWrapper(env, 
                                       action_key = 'action_movement')
         
+        # Add masks for agent-to-box observations
         env = AgentGeomObsMask2D(env,
                                  pos_obs_key = 'box_pos',
                                  mask_obs_key = 'mask_ab_obs',
@@ -229,16 +238,20 @@ class GameEnvironment:
         env = AddConstantObservationsWrapper(env,
                                              new_obs = {'hider': hider_obs})
         
+        # Add masks for agent-to-ramp observations
         env = AgentGeomObsMask2D(env,
                                  pos_obs_key = 'ramp_pos',
                                  mask_obs_key = 'mask_ar_obs',
                                  geom_idxs_obs_key = 'ramp_geom_idxs')
 
+        # Add ability for agents to grab boxes, ramps, and cylinders
+        # TODO: cylinders
         env = GrabObjWrapper(env,
                              body_names = [f'moveable_box{i}' for i in range(np.max(self.n_boxes + self.n_walls))] + ([f"ramp{i}:ramp" for i in range(self.n_ramps)]),
                              radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ['curr_n_boxes', 'curr_n_ramps'])
         
+        # Add ability for agents to lock boxes
         env = LockObjWrapper(env,
                              body_names = [f'moveable_box{i}' for i in range(np.max(self.n_boxes + self.n_walls))],
                              agent_idx_allowed_to_lock = np.arange(self.n_players),
@@ -247,6 +260,7 @@ class GameEnvironment:
                              obj_in_game_metadata_keys = ["curr_n_boxes"],
                              agent_allowed_to_lock_keys = None)
         
+        # Add ability for agents to lock ramps
         env = LockObjWrapper(env,
                              body_names = [f'ramp{i}:ramp' for i in range(self.n_ramps)],
                              agent_idx_allowed_to_lock = np.arange(self.n_players),
@@ -256,37 +270,46 @@ class GameEnvironment:
                              obj_in_game_metadata_keys = ['curr_n_ramps'],
                              agent_allowed_to_lock_keys = None)
         
+        # Adds LIDAR for each agent
         if self.lidar > 0:
             env = Lidar(env,
                         n_lidar_per_agent = self.lidar,
                         visualize_lidar = self.visualize_lidar)
 
+        # Splits observations for each agent
         env = SplitObservations(env,
                                 keys_self = keys_self + keys_mask_self,
                                 keys_copy = keys_copy,
                                 keys_self_matrices = keys_mask_self)
         
+        # Adds extra entities to ensure environment matches
         env = SpoofEntityWrapper(env, 
                                  total_n_entities = np.max(self.n_boxes + self.n_walls),
                                  keys = ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                                  mask_keys = ['mask_ab_obs'])
         
+        # Gives agents the ability to lock all objects
         env = LockAllWrapper(env,
                              remove_object_specific_lock = True)
         
+        # Adds masks for possible actions
         env = MaskActionWrapper(env,
                                 action_key = 'action_pull',
                                 mask_keys = ['mask_ab_obs', 'mask_ar_obs'])
 
+        # Enforce that agents only grab the closest object
         env = GrabClosestWrapper(env)
         
+        # Catches Mujoco exceptions
         env = DiscardMujocoExceptionEpisodes(env)
 
+        # Groups observations based on key
         env = ConcatenateObsWrapper(env, 
                                     obs_groups = {'agent_qpos_qvel': ['agent_qpos_qvel', 'hider', 'prep_obs'],
                                                   'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                                                   'ramp_obs': ['ramp_obs', 'ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock']})
         
+        # Selects keys for final observations
         env = SelectKeysWrapper(env,
                                 keys_self = keys_self,
                                 keys_other = keys_external + keys_mask_self + keys_mask_external)

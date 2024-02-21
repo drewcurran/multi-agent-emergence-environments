@@ -181,19 +181,19 @@ class GameEnvironment:
     
     def govern_env(self, env):
         # Self constants
-        keys_self = ['agent_qpos_qvel', 'hider', 'prep_obs']
+        keys_self = ['agent_qpos_qvel']
 
         # Masked self constants
         keys_mask_self = ['mask_aa_obs']
 
         # External constants
-        keys_external = ['agent_qpos_qvel', 'mask_ab_obs', 'box_obs', 'mask_af_obs', 'flag_obs', 'ramp_obs']
+        keys_external = ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'flag_obs', 'mask_ab_obs', 'mask_af_obs']
 
         # Masked external constants
-        keys_mask_external = ['mask_ab_obs', 'mask_af_obs', 'mask_ar_obs', 'lidar', 'mask_ab_obs_spoof', 'mask_af_obs_spoof']
+        keys_mask_external = ['lidar', 'mask_ab_obs', 'mask_af_obs', 'mask_ar_obs', 'mask_ab_obs_spoof', 'mask_af_obs_spoof']
 
         # Copy constants
-        keys_copy = ['you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock', 'lidar']
+        keys_copy = ['lidar', 'you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock']
 
         # Add floor physics to the environment
         friction = FloorAttributes(friction = self.floor_friction)

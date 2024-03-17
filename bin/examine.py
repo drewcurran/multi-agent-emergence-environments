@@ -34,35 +34,52 @@ def main(argv):
         bin/examine.py my_env_jsonnet.jsonnet my_policy.npz
         bin/examine.py mae_envs/envs/hide_and_seek.py my_policy.npz n_hiders=3 n_seekers=2 n_boxes=8 n_ramps=1
     '''
-    names, kwargs = parse_arguments(argv)
-
-    env_name = names[0]
     core_dir = abspath(join(dirname(__file__), '..'))
-    envs_dir = 'mae_envs/envs',
-    xmls_dir = 'xmls',
+    envs_dir = 'mae_envs/envs'
+    xmls_dir = 'xmls'
 
-    if len(names) == 1:  # examine the environment
-        examine_env(env_name, kwargs,
-                    core_dir=core_dir, envs_dir=envs_dir, xmls_dir=xmls_dir,
+    names, kwargs = parse_arguments(argv)
+    env_name = names[0]
+
+    # Examine the environment
+    if len(names) == 1:
+        examine_env(env_name,
+                    kwargs,
+                    core_dir=core_dir,
+                    envs_dir=envs_dir,
+                    xmls_dir=xmls_dir,
                     env_viewer=EnvViewer)
 
-    if len(names) >= 2:  # run policies on the environment
-        # importing PolicyViewer and load_policy here because they depend on several
-        # packages which are only needed for playing policies, not for any of the
-        # environments code.
-        from mae_envs.viewer.policy_viewer import PolicyViewer
-        from ma_policy.load_policy import load_policy
-        policy_names = names[1:]
-        env, args_remaining_env = load_env(env_name, core_dir=core_dir,
-                                           envs_dir=envs_dir, xmls_dir=xmls_dir,
-                                           return_args_remaining=True, **kwargs)
+    # Run policies on the environment
+    if len(names) >= 2:  
 
+        print('here')
+
+        from mae_envs.viewer.policy_viewer import PolicyViewer
+
+        #from ma_policy.load_policy import load_policy
+
+        policy_names = names[1:]
+
+        print('here')
+
+        env, args_remaining_env = load_env(env_name,
+                                           core_dir=core_dir,
+                                           envs_dir=envs_dir,
+                                           xmls_dir=xmls_dir,
+                                           return_args_remaining=True,
+                                           **kwargs)
+
+        print('here')
+        
         if isinstance(env.action_space, Tuple):
             env = JoinMultiAgentActions(env)
         if env is None:
             raise Exception(f'Could not find environment based on pattern {env_name}')
+        env.reset()
 
-        env.reset()  # generate action and observation spaces
+        [print(name) for name in policy_names]
+
         assert np.all([name.endswith('.npz') for name in policy_names])
         policies = [load_policy(name, env=env, scope=f'policy_{i}')
                     for i, name in enumerate(policy_names)]

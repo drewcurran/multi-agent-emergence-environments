@@ -423,7 +423,7 @@ class GameRewardWrapper(gym.Wrapper):
         obs, rew, done, info = self.env.step(action)
 
         # TODO: Implement collisions
-        print(self.metadata)
+        # print(self.metadata)
 
         difference = self.metadata['hiders_score'] - self.metadata['seekers_score']
         this_rew = np.ones((self.n_agents,))

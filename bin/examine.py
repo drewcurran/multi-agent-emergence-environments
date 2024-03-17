@@ -1,16 +1,16 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 import logging
 import click
 import numpy as np
 from os.path import abspath, dirname, join
 from gym.spaces import Tuple
-
-from mae_envs.viewer.env_viewer import EnvViewer
-from mae_envs.wrappers.multi_agent import JoinMultiAgentActions
 from mujoco_worldgen.util.envs import examine_env, load_env
 from mujoco_worldgen.util.types import extract_matching_arguments
 from mujoco_worldgen.util.parse_arguments import parse_arguments
-
+from mae_envs.viewer.env_viewer import EnvViewer
+from mae_envs.wrappers.multi_agent import JoinMultiAgentActions
+from mae_envs.viewer.policy_viewer import PolicyViewer
+from ma_policy.load_policy import load_policy
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def main(argv):
     '''
     core_dir = abspath(join(dirname(__file__), '..'))
     envs_dir = 'mae_envs/envs'
-    xmls_dir = 'xmls'
+    policies_dir = 'ma_policy/pols'
 
     names, kwargs = parse_arguments(argv)
     env_name = names[0]
@@ -47,43 +47,25 @@ def main(argv):
                     kwargs,
                     core_dir=core_dir,
                     envs_dir=envs_dir,
-                    xmls_dir=xmls_dir,
                     env_viewer=EnvViewer)
 
     # Run policies on the environment
     if len(names) >= 2:  
-
-        print('here')
-
-        from mae_envs.viewer.policy_viewer import PolicyViewer
-
-        #from ma_policy.load_policy import load_policy
-
-        policy_names = names[1:]
-
-        print('here')
-
         env, args_remaining_env = load_env(env_name,
                                            core_dir=core_dir,
                                            envs_dir=envs_dir,
                                            xmls_dir=xmls_dir,
                                            return_args_remaining=True,
                                            **kwargs)
-
-        print('here')
-        
         if isinstance(env.action_space, Tuple):
             env = JoinMultiAgentActions(env)
         if env is None:
             raise Exception(f'Could not find environment based on pattern {env_name}')
         env.reset()
 
-        [print(name) for name in policy_names]
-
+        policy_names = names[1:]
         assert np.all([name.endswith('.npz') for name in policy_names])
-        policies = [load_policy(name, env=env, scope=f'policy_{i}')
-                    for i, name in enumerate(policy_names)]
-
+        policies = [load_policy(name, env=env, scope=f'policy_{i}') for i, name in enumerate(policy_names)]
 
         args_remaining_policy = args_remaining_env
 
@@ -96,7 +78,6 @@ def main(argv):
                 f"There left unused arguments: {args_remaining}. There shouldn't be any.")
             viewer = PolicyViewer(env, policies, **args_to_pass)
             viewer.run()
-
 
     print(main.__doc__)
 

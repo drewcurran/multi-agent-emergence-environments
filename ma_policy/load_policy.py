@@ -5,7 +5,6 @@ import logging
 import sys
 import traceback
 import cloudpickle as pickle
-
 from ma_policy.ma_policy import MAPolicy
 
 
@@ -74,4 +73,5 @@ def load_policy(path, env=None, scope='policy'):
     del policy_dict['policy_fn_and_args']
 
     load_variables(policy, policy_dict)
+
     return policy

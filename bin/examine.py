@@ -47,6 +47,7 @@ def main(argv):
                     kwargs,
                     core_dir=core_dir,
                     envs_dir=envs_dir,
+                    exact=True,
                     env_viewer=EnvViewer)
 
     # Run policies on the environment
@@ -54,7 +55,7 @@ def main(argv):
         env, args_remaining_env = load_env(env_name,
                                            core_dir=core_dir,
                                            envs_dir=envs_dir,
-                                           xmls_dir=xmls_dir,
+                                           exact=True,
                                            return_args_remaining=True,
                                            **kwargs)
         if isinstance(env.action_space, Tuple):

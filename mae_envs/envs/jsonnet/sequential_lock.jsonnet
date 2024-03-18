@@ -1,6 +1,6 @@
 {
     make_env: {
-        "function": "mae_envs.envs.box_locking:make_env",
+        "function": "mae_envs.envs.py.box_locking:make_env",
         args: {
             # Agents
             n_agents: 1,

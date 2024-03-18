@@ -1,6 +1,6 @@
 {
     make_env: {
-        "function": "mae_envs.envs.shelter_construction:make_env",
+        "function": "mae_envs.envs.py.shelter_construction:make_env",
         args: {
             # Agent Actions
             grab_box: true,

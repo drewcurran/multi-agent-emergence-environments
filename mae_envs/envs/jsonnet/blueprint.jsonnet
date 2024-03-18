@@ -1,6 +1,6 @@
 {
     make_env: {
-        "function": "mae_envs.envs.blueprint_construction:make_env",
+        "function": "mae_envs.envs.py.blueprint_construction:make_env",
         args: {
             # Agent Actions
             grab_box: true,

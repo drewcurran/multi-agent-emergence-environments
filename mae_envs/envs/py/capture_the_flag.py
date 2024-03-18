@@ -19,6 +19,7 @@ from mae_envs.modules.objects import Boxes, Ramps, Cylinders, LidarSites
 from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import uniform_placement
 
+# TODO: Implement flag collision and scoring
 
 '''
 Sets up the game environment.
@@ -421,9 +422,6 @@ class GameRewardWrapper(gym.Wrapper):
 
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
-
-        # TODO: Implement collisions
-        # print(self.metadata)
 
         difference = self.metadata['hiders_score'] - self.metadata['seekers_score']
         this_rew = np.ones((self.n_agents,))

@@ -154,6 +154,9 @@ class HideAndSeekRewardWrapper(gym.Wrapper):
         rew += this_rew
         return obs, rew, done, info
 
+    def reset(self):
+        return self.env.reset()
+
 
 class MaskUnseenAction(gym.Wrapper):
     '''

@@ -5,6 +5,7 @@ from copy import deepcopy
 import logging
 import traceback
 import sys
+import os
 from ma_policy.variable_schema import VariableSchema, BATCH, TIMESTEPS
 from ma_policy.util import shape_list
 from ma_policy.layers import (entity_avg_pooling_masked, entity_max_pooling_masked,
@@ -96,7 +97,8 @@ def construct_tf_graph(all_inputs, spec, act, scope='', reuse=False,):
 
     valid_activations = {'relu': tf.nn.relu, 'tanh': tf.tanh, '': None}
     state_variables = OrderedDict()
-    logger.info(f"Spec:\n{spec}")
+    if os.environ['LOG_NETS'] == 'True':
+        logger.info(f"Spec:\n{spec}")
     entity_locations = {}
     reset_ops = []
     with tf.variable_scope(scope, reuse=reuse):

@@ -1,4 +1,5 @@
 import os
+from os.path import join
 import numpy as np
 import tensorflow as tf
 import logging
@@ -6,6 +7,7 @@ import sys
 import traceback
 import cloudpickle as pickle
 from ma_policy.ma_policy import MAPolicy
+from mujoco_worldgen.util.envs import get_match
 
 
 def shape_list(x):
@@ -43,7 +45,7 @@ def load_variables(policy, weights):
     tf.get_default_session().run(assign_ops)
 
 
-def load_policy(path, env=None, scope='policy'):
+def load_policy(pattern, core_dir='', pols_dir='examples', exact=False, env=None, scope='policy'):
     '''
         Load a policy.
         Args:
@@ -52,6 +54,18 @@ def load_policy(path, env=None, scope='policy'):
                 policy that is returned
             scope (string): The base scope for the policy variables
     '''
+    # Loads environment from generic file
+    if not os.path.exists(pattern):
+        match = get_match(parent = join(core_dir, pols_dir),
+                          pattern = pattern,
+                          file = os.path.basename(pattern) if exact else '*',
+                          file_types = ['', '.npz'])
+        return load_policy(match)
+
+    # Loads environment from python file
+    if pattern.endswith(".npz"):
+        print("Loading policy from the file: %s" % pattern)
+
     # TODO this will probably need to be changed when trying to run policy on GPU
     if tf.get_default_session() is None:
         tf_config = tf.ConfigProto(
@@ -60,7 +74,7 @@ def load_policy(path, env=None, scope='policy'):
         sess = tf.Session(config=tf_config)
         sess.__enter__()
 
-    policy_dict = dict(np.load(path))
+    policy_dict = dict(np.load(pattern))
     policy_fn_and_args_raw = pickle.loads(policy_dict['policy_fn_and_args'])
     policy_args = policy_fn_and_args_raw['args']
     policy_args['scope'] = scope

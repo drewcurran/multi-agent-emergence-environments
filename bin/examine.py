@@ -25,7 +25,7 @@ def main(argv):
         mujoco-worldgen/examples/example_env_examine.jsonnet
     You can find saved policies and the in the 'examples' together with the environment they were
     trained in and the hyperparameters used. The naming used is 'examples/<env_name>.jsonnet' for
-    the environment jsonnet file and 'examples/<env_name>.npz' for the policy weights file.
+    the environment jsonnet file and 'examples/<policy_name>.npz' for the policy weights file.
     Example uses:
         bin/examine.py hide_and_seek
         bin/examine.py mae_envs/envs/base.py
@@ -36,7 +36,7 @@ def main(argv):
     '''
     core_dir = abspath(join(dirname(__file__), '..'))
     envs_dir = 'mae_envs/envs'
-    policies_dir = 'ma_policy/pols'
+    pols_dir = 'ma_policy/pols'
 
     names, kwargs = parse_arguments(argv)
     env_name = names[0]
@@ -65,8 +65,12 @@ def main(argv):
         env.reset()
 
         policy_names = names[1:]
-        assert np.all([name.endswith('.npz') for name in policy_names])
-        policies = [load_policy(name, env=env, scope=f'policy_{i}') for i, name in enumerate(policy_names)]
+        policies = [load_policy(policy_name,
+                                core_dir=core_dir,
+                                pols_dir=pols_dir,
+                                exact=True,
+                                env=env,
+                                scope=f'policy_{i}') for i, policy_name in enumerate(policy_names)]
 
         args_remaining_policy = args_remaining_env
 

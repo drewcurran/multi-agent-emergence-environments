@@ -1,10 +1,16 @@
+#!/usr/bin/env python3.6
 import subprocess
 import unittest
 import pytest
 import os
+from os.path import abspath, dirname, join
 
-EXAMPLES_DIR = os.path.dirname(os.path.abspath(__file__))
-EXAMINE_FILE_PATH = os.path.join(EXAMPLES_DIR, "../bin/examine.py")
+
+CORE_DIRECTORY = abspath(join(dirname(__file__), '..'))
+ENVS_DIRECTORY = 'mae_envs/envs'
+POLS_DIRECTORY = 'ma_policy/pols'
+EXAMINE_DIRECTORY = 'bin/examine.py'
+
 
 class ExamineTest(unittest.TestCase):
     def test_examine_env(self):
@@ -19,7 +25,12 @@ class ExamineTest(unittest.TestCase):
         for env in envs:
             with self.assertRaises(subprocess.TimeoutExpired):
                 subprocess.check_call(
-                    ["/usr/bin/env", "python", EXAMINE_FILE_PATH, os.path.join(EXAMPLES_DIR, env)],
+                    [
+                        "/usr/bin/env",
+                        "python",
+                        join(CORE_DIRECTORY, EXAMINE_DIRECTORY),
+                        join(CORE_DIRECTORY, ENVS_DIRECTORY, env)
+                    ],
                     timeout=10)
 
 
@@ -35,5 +46,11 @@ class ExamineTest(unittest.TestCase):
         for env, policy in envs_policies:
             with self.assertRaises(subprocess.TimeoutExpired):
                 subprocess.check_call(
-                    ["/usr/bin/env", "python", EXAMINE_FILE_PATH, os.path.join(EXAMPLES_DIR, env), os.path.join(EXAMPLES_DIR, policy)],
+                    [
+                        "/usr/bin/env",
+                        "python",
+                        join(CORE_DIRECTORY, EXAMINE_DIRECTORY),
+                        join(CORE_DIRECTORY, ENVS_DIRECTORY, env),
+                        join(CORE_DIRECTORY, POLS_DIRECTORY, policy)
+                    ],
                     timeout=15)

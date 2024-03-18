@@ -28,11 +28,12 @@ def main(argv):
     the environment jsonnet file and 'examples/<policy_name>.npz' for the policy weights file.
     Example uses:
         bin/examine.py hide_and_seek
-        bin/examine.py mae_envs/envs/base.py
-        bin/examine.py mae_envs/envs/base n_boxes=6 n_ramps=2 n_agents=3
-        bin/examine.py mae_envs/envs/my_env_jsonnet.jsonnet
+        bin/examine.py capture_the_flag.py
+        bin/examine.py mae_envs/envs/py/base.py
+        bin/examine.py mae_envs/envs/py/base n_boxes=6 n_ramps=2 n_agents=3
+        bin/examine.py mae_envs/envs/jsonnet/my_env_jsonnet.jsonnet
         bin/examine.py my_env_jsonnet.jsonnet my_policy.npz
-        bin/examine.py mae_envs/envs/hide_and_seek.py my_policy.npz n_hiders=3 n_seekers=2 n_boxes=8 n_ramps=1
+        bin/examine.py mae_envs/envs/py/hide_and_seek.py my_policy.npz n_hiders=3 n_seekers=2 n_boxes=8 n_ramps=1
     '''
     core_dir = abspath(join(dirname(__file__), '..'))
     envs_dir = 'mae_envs/envs'

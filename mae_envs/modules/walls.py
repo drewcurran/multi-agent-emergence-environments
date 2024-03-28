@@ -384,9 +384,9 @@ class WallScenarios(EnvModule):
                 This is just used for pretty rendering
     '''
     @store_args
-    def __init__(self, grid_size, door_size, scenario, walls=None, walls_to_split=None,
+    def __init__(self, grid_size, door_size, scenario = 'copy', walls=None, walls_to_split=None,
                  friction=None, p_door_dropout=0.0, low_outside_walls=False):
-        assert scenario in ['var_quadrant', 'quadrant', 'half', 'var_tri', 'empty', 'ctf']
+        assert scenario in ['var_quadrant', 'quadrant', 'half', 'var_tri', 'empty', 'copy']
 
     def build_world_step(self, env, floor, floor_size):
         # Outside walls
@@ -404,9 +404,6 @@ class WallScenarios(EnvModule):
                 walls_to_split = [new_walls[wall_to_split]]
             else:
                 walls_to_split = new_walls
-        elif self.scenario == 'ctf':
-            walls = self.walls.copy()
-            walls_to_split = self.walls_to_split.copy()
         elif self.scenario == 'half':
             walls_to_split += [Wall([self.grid_size - 1, self.grid_size // 2],
                                     [0, self.grid_size // 2])]
@@ -469,6 +466,9 @@ class WallScenarios(EnvModule):
             env.metadata['tri_placement_rotation'] = []
         elif self.scenario == 'empty':
             walls_to_split = []
+        elif self.scenario == 'copy':
+            walls = self.walls.copy()
+            walls_to_split = self.walls_to_split.copy()
 
         # Add doors
         new_walls, doors = split_walls(walls_to_split, self.door_size,

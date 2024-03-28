@@ -278,7 +278,6 @@ def make_env(n_substeps=15, horizon=80, deterministic_mode=False,
             agent_placement_fn = [first_hider_placement] * n_hiders
 
         first_seeker_placement = uniform_placement
-
         if seekers_together_radius is not None:
             str_in_cells = np.ceil(seekers_together_radius / cell_size).astype(int)
 

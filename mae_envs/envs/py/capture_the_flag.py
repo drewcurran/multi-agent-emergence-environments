@@ -19,19 +19,16 @@ from mae_envs.modules.objects import Boxes, Ramps, Cylinders, LidarSites
 from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import uniform_placement
 
-# TODO: Implement flag collision and scoring
 
 '''
 Sets up the game environment.
 '''
 class GameEnvironment:
-    def __init__(self, lidar = 0, visualize_lidar = False):       
+    def __init__(self, phase):       
         # World constants
-        self.scenario = 'ctf'
         self.floor_size = 10
-        self.grid_size = 51
-        self.door_size = 2
-        self.door_dropout = 0
+        self.grid_size = 31
+        self.door_size = 1
         self.floor_friction = 0.2
         self.object_friction = 0.01
         self.gravity = [0, 0, -50]
@@ -40,29 +37,14 @@ class GameEnvironment:
         self.grab_radius = 0.25 / self.box_size
         self.lock_type = 'any_lock_specific'
 
-        # Team constants
-        self.teams = 2
-        self.team_players = 2
-        self.team_ramps = 2
-        self.team_boxes = 1
-        self.team_walls = 1
-        self.team_flags = 1
-
-        # Game constants
-        self.n_players = self.teams * self.team_players
-        self.n_boxes = self.teams * self.team_boxes
-        self.n_walls = self.teams * self.team_walls
-        self.n_ramps = self.teams * self.team_ramps
-        self.n_flags = self.teams * self.team_flags
-
         # Display constants
         self.team_colors = [
             [np.array((66., 235., 244., 255.)) / 255],
             [(1., 0., 0., 1.)]
         ]
         self.horizon = 80
-        self.lidar = lidar
-        self.visualize_lidar = visualize_lidar
+        self.lidar = 0
+        self.visualize_lidar = False
 
         # Policy constants
         self.substeps = 15
@@ -71,9 +53,19 @@ class GameEnvironment:
         self.preparation_time = 0.4
         self.reward_type = 'joint_zero_sum'
 
+        # Game constants
+        self.phase = phase
+        self.scenario = GameScenario(self.phase, self.grid_size)
+        self.walls = self.scenario.get_walls()
+        self.agents = self.scenario.get_agents()
+        self.boxes = self.scenario.get_boxes()
+        self.ramps = self.scenario.get_ramps()
+        self.team_players = 2
+        self.n_flags = 2
+
     def construct_env(self):
         # Create base environment
-        env = Base(n_agents = self.n_players,
+        env = Base(n_agents = len(self.agents[0] + self.agents[1]),
                    n_substeps = self.substeps,
                    horizon = self.horizon,
                    floor_size = self.floor_size,
@@ -83,76 +75,44 @@ class GameEnvironment:
 
         # Add walls to the environment
         walls = WallScenarios(grid_size = self.grid_size,
+                              walls = self.walls[0],
+                              walls_to_split = self.walls[1],
                               door_size = self.door_size,
-                              scenario = self.scenario,
-                              walls = [
-                                  Wall([coords(self.grid_size, 0), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)]),
-                                  Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)]),
-                                  Wall([coords(self.grid_size, 1/3), coords(self.grid_size, 1)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
-                                  Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, -1/6)]),
-                                  Wall([coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, 1/6)]),
-                                  Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)]),
-                                  Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, -1/6)]),
-                                  Wall([coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, 1/6)]),
-                                  Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)]),
-                              ],
-                              walls_to_split = [
-                                  Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
-                                  Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
-                                  Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1)], [coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)]),
-                                  Wall([coords(self.grid_size, 1/3), coords(self.grid_size, -1)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
-                              ],
-                              friction = self.object_friction,
-                              p_door_dropout = self.door_dropout)
+                              friction = self.object_friction)
         env.add_module(walls)
 
         # Add agents to the environment
-        agents = Agents(n_agents = self.n_players,
-                        placement_fn = [
-                            partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
-                        ],
-                        color = self.team_colors[0] * self.team_players + self.team_colors[1] * self.team_players,
+        agents = Agents(n_agents = len(self.agents[0] + self.agents[1]),
+                        placement_fn = self.agents[0] + self.agents[1],
+                        color = self.team_colors[0] * len(self.agents[0]) + self.team_colors[1] * len(self.agents[1]),
                         friction = self.object_friction)
         env.add_module(agents)
         env.add_module(AgentManipulation())
 
-        # Add ramps to the environment
-        ramps = Ramps(n_ramps = self.n_ramps,
-                      placement_fn = [
-                            partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, 9/10)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -9/10)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)])),
-                      ],
-                      friction = self.object_friction,
-                      pad_ramp_size = True)
-        env.add_module(ramps)
-
         # Add boxes to the environment
-        boxes = Boxes(n_boxes = self.n_boxes + self.n_walls,
-                      n_elongated_boxes = self.n_walls,
-                      placement_fn = [
-                            partial(object_placement, bounds = ([coords(self.grid_size, -3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, -2/5), coords(self.grid_size, 1/5)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, 2/5), coords(self.grid_size, 1/5)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                            partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                      ],
+        boxes = Boxes(n_boxes = len(self.boxes[0] + self.boxes[1]),
+                      n_elongated_boxes = len(self.boxes[1]),
+                      placement_fn = self.boxes[0] + self.boxes[1],
                       friction = self.floor_friction,
                       boxid_obs = False,
                       box_only_z_rot = True,
                       alignment = 0)
         env.add_module(boxes)
 
+        # Add ramps to the environment
+        ramps = Ramps(n_ramps = len(self.ramps),
+                      placement_fn = self.ramps,
+                      friction = self.object_friction,
+                      pad_ramp_size = True)
+        env.add_module(ramps)
+
         # Add flags to the environment
         flags = Cylinders(n_objects = self.n_flags,
                           diameter = self.flag_size,
                           height = self.flag_size * 2,
                           placement_fn = [
-                              partial(object_placement, bounds = ([coords(self.grid_size, -3/4), coords(self.grid_size, 0)],)),
-                              partial(object_placement, bounds = ([coords(self.grid_size, 3/4), coords(self.grid_size, 0)],)),
+                              partial(object_placement, bounds = ([coords(self.grid_size, -3/4), coords(self.grid_size, 3/4)],)),
+                              partial(object_placement, bounds = ([coords(self.grid_size, 3/4), coords(self.grid_size, -3/4)],)),
                           ],
                           rgba = self.team_colors,
                           make_static = False)
@@ -168,17 +128,17 @@ class GameEnvironment:
                           ],
                           rgba = self.team_colors,
                           make_static = True)
-        env.add_module(zones)                   
+        env.add_module(zones)
 
         # Add LIDAR visualization to the environment
         if self.lidar > 0 and self.visualize_lidar:
-            lidar = LidarSites(n_agents = self.n_players,
+            lidar = LidarSites(n_agents = len(self.agents),
                                n_lidar_per_agent = self.lidar)
             env.add_module(lidar)
         
         return env
     
-    def govern_env(self, env):
+    def govern_env(self, env: Base):
         # Self constants
         keys_self = ['agent_qpos_qvel']
 
@@ -242,14 +202,14 @@ class GameEnvironment:
 
         # Add ability for agents to grab boxes, ramps, and flags
         env = GrabObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(self.n_boxes + self.n_walls))] + [f"ramp{i}:ramp" for i in range(self.n_ramps)] + [f"moveable_cylinder{i}" for i in range(self.n_flags)],
+                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))] + [f"ramp{i}:ramp" for i in range(len(self.ramps))] + [f"moveable_cylinder{i}" for i in range(self.n_flags)],
                              radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ['curr_n_boxes', 'curr_n_ramps', 'curr_n_flags'])
         
         # Add ability for agents to lock boxes
         env = LockObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(self.n_boxes + self.n_walls))],
-                             agent_idx_allowed_to_lock = np.arange(self.n_players),
+                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))],
+                             agent_idx_allowed_to_lock = np.arange(len(self.agents[0] + self.agents[1])),
                              lock_type = self.lock_type,
                              radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ["curr_n_boxes"],
@@ -257,8 +217,8 @@ class GameEnvironment:
         
         # Add ability for agents to lock ramps
         env = LockObjWrapper(env,
-                             body_names = [f'ramp{i}:ramp' for i in range(self.n_ramps)],
-                             agent_idx_allowed_to_lock = np.arange(self.n_players),
+                             body_names = [f'ramp{i}:ramp' for i in range(len(self.ramps))],
+                             agent_idx_allowed_to_lock = np.arange(len(self.agents[0] + self.agents[1])),
                              lock_type = self.lock_type, 
                              ac_obs_prefix = 'ramp_',
                              radius_multiplier = self.grab_radius,
@@ -279,7 +239,7 @@ class GameEnvironment:
         
         # Adds extra entities to ensure environment matches
         env = SpoofEntityWrapper(env, 
-                                 total_n_entities = np.max(self.n_boxes + self.n_walls),
+                                 total_n_entities = np.max(len(self.boxes[0] + self.boxes[1])),
                                  keys = ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                                  mask_keys = ['mask_ab_obs'])
         
@@ -313,6 +273,133 @@ class GameEnvironment:
 
         return env
 
+
+'''
+Designs the environment based on the phase.
+'''
+class GameScenario:
+    def __init__(self, phase, grid_size):  
+        self.phase = phase
+        self.grid_size = grid_size
+
+        self.walls = []
+        self.doors = []
+        self.agents0 = []
+        self.agents1 = []
+        self.boxes = []
+        self.long_boxes = []
+        self.ramps = []
+
+        if self.phase == 0:
+            self.walls = []
+            self.doors = [
+                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, 0)]),
+                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, -1)]),
+            ]
+            self.agents0 = [
+                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
+            ]
+            self.agents1 = [
+                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 1)])),
+            ]
+            self.boxes = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, -2/5), coords(self.grid_size, 1/5)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, 2/5), coords(self.grid_size, 1/5)])),
+            ]
+            self.long_boxes = []
+            self.ramps = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, 9/10)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -9/10)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)])),
+            ]
+
+        elif self.phase == 1 or self.phase == 2:
+            self.walls = [
+                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, -1)]),
+                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, 1)]),
+            ]
+            self.doors = [
+                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 0)]),
+                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, 0)]),
+            ]
+            self.agents0 = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
+            ]
+            self.agents1 = [
+                partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
+            ]
+            self.boxes = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, -2/5), coords(self.grid_size, 1/5)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, 2/5), coords(self.grid_size, 1/5)])),
+            ]
+            self.long_boxes = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+            ]
+            self.ramps = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, 9/10)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -9/10)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)])),
+            ]
+
+        elif self.phase == 3:
+            self.walls = [
+                Wall([coords(self.grid_size, 0), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)]),
+                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)]),
+                Wall([coords(self.grid_size, 1/3), coords(self.grid_size, 1)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
+                Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, -1/6)]),
+                Wall([coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, -3/5), coords(self.grid_size, 1/6)]),
+                Wall([coords(self.grid_size, -9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, -9/10), coords(self.grid_size, 1/6)]),
+                Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, -1/6)]),
+                Wall([coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)], [coords(self.grid_size, 3/5), coords(self.grid_size, 1/6)]),
+                Wall([coords(self.grid_size, 9/10), coords(self.grid_size, -1/6)], [coords(self.grid_size, 9/10), coords(self.grid_size, 1/6)]),
+            ]
+            self.doors = [
+                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
+                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)]),
+                Wall([coords(self.grid_size, -1/3), coords(self.grid_size, 1)], [coords(self.grid_size, -1/3), coords(self.grid_size, 1/2)]),
+                Wall([coords(self.grid_size, 1/3), coords(self.grid_size, -1)], [coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)]),
+            ]
+            self.agents0 = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
+            ]
+            self.agents1 = [
+                partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
+            ]
+            self.boxes = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, -2/5), coords(self.grid_size, 1/5)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, 2/5), coords(self.grid_size, 1/5)])),
+            ]
+            self.long_boxes = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+            ]
+            self.ramps = [
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, 9/10)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -9/10)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)])),
+            ]
+
+    def get_walls(self):
+        return (self.walls, self.doors)
+    
+    def get_agents(self):
+        return (self.agents0, self.agents1)
+    
+    def get_boxes(self):
+        return (self.boxes, self.long_boxes)
+    
+    def get_ramps(self):
+        return (self.ramps)
 
 
 '''
@@ -509,7 +596,7 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
 Makes the environment.
 '''
 def make_env():
-    env_generator = GameEnvironment(lidar = 5, visualize_lidar = True)
+    env_generator = GameEnvironment(phase = 0)
     env = env_generator.construct_env()
     env.reset()
     env = env_generator.govern_env(env)

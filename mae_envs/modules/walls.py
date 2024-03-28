@@ -467,7 +467,7 @@ class WallScenarios(EnvModule):
         elif self.scenario == 'empty':
             walls_to_split = []
         elif self.scenario == 'copy':
-            walls = self.walls.copy()
+            walls += self.walls.copy()
             walls_to_split = self.walls_to_split.copy()
 
         # Add doors

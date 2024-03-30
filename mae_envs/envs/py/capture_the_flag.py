@@ -24,20 +24,22 @@ from mae_envs.modules.util import uniform_placement
 Sets up the game environment.
 '''
 class GameEnvironment:
-    def __init__(self, playground, mode):       
-        # Object constants
-        self.floor_size = 6
-        self.grid_size = 31
-        self.door_size = 2
-        self.box_size = 0.5
-        self.flag_size = 0.2
-        self.grab_radius = 0.25 / self.box_size
-
+    def __init__(self, playground, mode):
         # World constants
         self.floor_friction = 0.2
         self.object_friction = 0.01
         self.gravity = [0, 0, -50]
         self.lock_type = 'any_lock_specific'
+
+        # Playground constants
+        self.scenario = GameScenario(playground, mode)
+        self.playground_constants = self.scenario.get_playground_constants()
+        for key, value in self.playground_constants.items(): 
+            setattr(self, key, value)
+        self.walls = self.scenario.get_walls()
+        self.agents = self.scenario.get_agents()
+        self.boxes = self.scenario.get_boxes()
+        self.ramps = self.scenario.get_ramps()
 
         # Display constants
         self.team_colors = [
@@ -54,15 +56,6 @@ class GameEnvironment:
         self.deterministic = False
         self.preparation_time = 0.4
         self.reward_type = 'joint_zero_sum'
-
-        # Game constants
-        self.scenario = GameScenario(playground, mode, self.grid_size)
-        self.walls = self.scenario.get_walls()
-        self.agents = self.scenario.get_agents()
-        self.boxes = self.scenario.get_boxes()
-        self.ramps = self.scenario.get_ramps()
-        self.team_players = 2
-        self.n_flags = 2
 
     def construct_env(self):
         # Create base environment
@@ -108,7 +101,7 @@ class GameEnvironment:
         env.add_module(ramps)
 
         # Add flags to the environment
-        flags = Cylinders(n_objects = self.n_flags,
+        flags = Cylinders(n_objects = 2,
                           diameter = self.flag_size,
                           height = self.flag_size * 2,
                           placement_fn = [
@@ -120,7 +113,7 @@ class GameEnvironment:
         env.add_module(flags)
 
         # Add zones to the environment
-        zones = Cylinders(n_objects = self.n_flags,
+        zones = Cylinders(n_objects = 2,
                           diameter = self.flag_size * 2,
                           height = self.flag_size / 4,
                           placement_fn = [
@@ -168,15 +161,15 @@ class GameEnvironment:
         
         # Assign team membership for each agent
         env = TeamMembership(env, 
-                             team_index = np.append(np.zeros((self.team_players,)), np.ones((self.team_players,))))
+                             team_index = np.append(np.zeros((len(self.agents[0]),)), np.ones((len(self.agents[1]),))))
         
         # Add masks for agent-to-agent observations
         env = AgentAgentObsMask2D(env)
 
         # Apply reward functions for the game
         env = GameRewardWrapper(env,
-                                n_hiders = self.team_players,
-                                n_seekers = self.team_players,
+                                n0 = len(self.agents[0]),
+                                n1 = len(self.agents[1]),
                                 rew_type = self.reward_type)
         
         # Discretize agent actions
@@ -203,7 +196,7 @@ class GameEnvironment:
 
         # Add ability for agents to grab boxes, ramps, and flags
         env = GrabObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))] + [f"ramp{i}:ramp" for i in range(len(self.ramps))] + [f"moveable_cylinder{i}" for i in range(self.n_flags)],
+                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))] + [f"ramp{i}:ramp" for i in range(len(self.ramps))] + [f"moveable_cylinder{i}" for i in range(2)],
                              radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ['curr_n_boxes', 'curr_n_ramps', 'curr_n_flags'])
         
@@ -279,10 +272,11 @@ class GameEnvironment:
 Designs the environment based on the phase.
 '''
 class GameScenario:
-    def __init__(self, playground, mode, grid_size):   # TODO: Make function of grid_size
+    def __init__(self, playground, mode):   # TODO: Make function of grid_size
         self.playground = playground
         self.mode = mode
-        self.grid_size = grid_size
+        self.playground_constants = {}
+        self.get_playground_constants()
         self.walls = []
         self.doors = []
         self.agents0 = []
@@ -290,100 +284,111 @@ class GameScenario:
         self.boxes = []
         self.long_boxes = []
         self.ramps = []
+    
+    def get_playground_constants(self):
+        self.playground_constants['floor_size'] = 6
+        self.playground_constants['grid_size'] = 31
+        self.playground_constants['door_size'] = 2
+        self.playground_constants['box_size'] = 0.5
+        self.playground_constants['flag_size'] = 0.2
+        self.playground_constants['grab_radius'] = 0.25 / self.playground_constants['box_size']
+
+        return self.playground_constants
 
     def get_walls(self):
+        grid_size = self.playground_constants['grid_size']
+
         if self.playground == 0:
             self.walls = []
             self.doors = [
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, 0)]),
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, -1)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, 0)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 0), coords(grid_size, -1)]),
             ]
         elif self.playground == 1:
             self.walls = [
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, -1)]),
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, 1)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 0), coords(grid_size, -1)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 0), coords(grid_size, 1)]),
             ]
             self.doors = [
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 0)]),
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, 0)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 0)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, 0)]),
             ]
         elif self.playground == 2:
             self.walls = [
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, -1)]),
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 0), coords(self.grid_size, 1)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 0), coords(grid_size, -1)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 0), coords(grid_size, 1)]),
             ]
             self.doors = [
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 0)]),
-                Wall([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, 0)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 0)]),
+                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, 0)]),
             ]
         
         return (self.walls, self.doors)
     
     def get_agents(self):
+        grid_size = self.playground_constants['grid_size']
+
         if self.playground == 0 or self.playground == 1:
             self.agents0 = [
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
             ]
             self.agents1 = [
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 1)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
             ]
         elif self.playground == 2:
             self.agents0 = [
-                partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, -9/10), coords(self.grid_size, 9/10)], [coords(self.grid_size, -2/3), coords(self.grid_size, 2/3)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
             ]
             self.agents1 = [
-                partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 9/10), coords(self.grid_size, -9/10)], [coords(self.grid_size, 2/3), coords(self.grid_size, -2/3)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
             ]
 
         return (self.agents0, self.agents1)
     
     def get_boxes(self):
+        grid_size = self.playground_constants['grid_size']
+
         if self.playground == 0:
             self.boxes = [
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
             ]
             self.long_boxes = []
         elif self.playground == 1:
             self.boxes = [
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 1)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
             ]
             self.long_boxes = []
         elif self.playground == 2:
             self.boxes = [
-                partial(object_placement, bounds = ([coords(self.grid_size, -3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, -2/5), coords(self.grid_size, 1/5)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 3/5), coords(self.grid_size, -1/5)], [coords(self.grid_size, 2/5), coords(self.grid_size, 1/5)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
             ]
-            self.long_boxes = [
-                #partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                #partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-            ]
+            self.long_boxes = []
         
         return (self.boxes, self.long_boxes)
     
     def get_ramps(self):
+        grid_size = self.playground_constants['grid_size']
+
         if self.playground == 0:
             self.ramps = [
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
             ]
         elif self.playground == 1:
             self.ramps = [
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, 1), coords(self.grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 0), coords(self.grid_size, 0)], [coords(self.grid_size, -1), coords(self.grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
             ]
         elif self.playground == 2:
             self.ramps = [
-                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, -1/3), coords(self.grid_size, 9/10)], [coords(self.grid_size, 1/3), coords(self.grid_size, 1/2)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -1/2)], [coords(self.grid_size, 0), coords(self.grid_size, 1/2)])),
-                partial(object_placement, bounds = ([coords(self.grid_size, 1/3), coords(self.grid_size, -9/10)], [coords(self.grid_size, -1/3), coords(self.grid_size, -1/2)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
             ]
         
         return (self.ramps)
@@ -475,40 +480,40 @@ Args:
     reward_scale (float): scales the reward by this factor
 '''
 class GameRewardWrapper(gym.Wrapper):
-    def __init__(self, env, n_hiders, n_seekers, rew_type='selfish', reward_scale=1.0):
+    def __init__(self, env, n0, n1, rew_type='selfish', reward_scale=1.0):
         super().__init__(env)
         self.n_agents = self.unwrapped.n_agents
         self.rew_type = rew_type
-        self.n_hiders = n_hiders
-        self.n_seekers = n_seekers
+        self.n0 = n0
+        self.n1 = n1
         self.reward_scale = reward_scale
-        assert n_hiders + n_seekers == self.n_agents, "n_hiders + n_seekers must equal n_agents"
+        assert n0 + n1 == self.n_agents, "n0 + n1 must equal n_agents"
 
-        self.metadata['n_hiders'] = n_hiders
-        self.metadata['n_seekers'] = n_seekers
+        self.metadata['n_hiders'] = n0
+        self.metadata['n_seekers'] = n1
         self.metadata['hiders_score'] = 0
         self.metadata['seekers_score'] = 0
         self.metadata['prev_score_diff'] = 0
 
         # Agent names are used to plot agent-specific rewards on tensorboard
-        self.unwrapped.agent_names = [f'hider{i}' for i in range(self.n_hiders)] + \
-                                     [f'seeker{i}' for i in range(self.n_seekers)]
+        self.unwrapped.agent_names = [f'hider{i}' for i in range(self.n0)] + \
+                                     [f'seeker{i}' for i in range(self.n1)]
 
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
 
         difference = self.metadata['hiders_score'] - self.metadata['seekers_score']
         this_rew = np.ones((self.n_agents,))
-        this_rew[:self.n_hiders] = difference - self.metadata['prev_score_diff'] / 2
-        this_rew[self.n_hiders:] = self.metadata['prev_score_diff'] / 2 - difference
+        this_rew[:self.n0] = difference - self.metadata['prev_score_diff'] / 2
+        this_rew[self.n0:] = self.metadata['prev_score_diff'] / 2 - difference
         self.metadata['prev_score_diff'] = difference
 
         if self.rew_type == 'joint_mean':
-            this_rew[:self.n_hiders] = this_rew[:self.n_hiders].mean()
-            this_rew[self.n_hiders:] = this_rew[self.n_hiders:].mean()
+            this_rew[:self.n0] = this_rew[:self.n0].mean()
+            this_rew[self.n0:] = this_rew[self.n0:].mean()
         elif self.rew_type == 'joint_zero_sum':
-            this_rew[:self.n_hiders] = np.min(this_rew[:self.n_hiders])
-            this_rew[self.n_hiders:] = np.max(this_rew[self.n_hiders:])
+            this_rew[:self.n0] = np.min(this_rew[:self.n0])
+            this_rew[self.n0:] = np.max(this_rew[self.n0:])
         elif self.rew_type == 'selfish':
             pass
         else:
@@ -537,7 +542,7 @@ class MaskUnseenAction(gym.Wrapper):
         self.team_idx = team_idx
         self.action_key = action_key
         self.n_agents = self.unwrapped.n_agents
-        self.n_hiders = self.metadata['n_hiders']
+        self.n0 = self.metadata['n_hiders']
 
     def reset(self):
         self.prev_obs = self.env.reset()
@@ -546,7 +551,7 @@ class MaskUnseenAction(gym.Wrapper):
         return deepcopy(self.prev_obs)
 
     def step(self, action):
-        is_caught = np.any(self.prev_obs['mask_aa_obs'][self.n_hiders:, :self.n_hiders])
+        is_caught = np.any(self.prev_obs['mask_aa_obs'][self.n0:, :self.n0])
         if is_caught:
             action[self.action_key][self.this_team] = 0
 
@@ -582,8 +587,8 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
 '''
 Makes the environment.
 '''
-def make_env():
-    env_generator = GameEnvironment(playground = 2, mode = 0)
+def make_env(playground = 1, mode = 0):
+    env_generator = GameEnvironment(playground, mode)
     env = env_generator.construct_env()
     env.reset()
     env = env_generator.govern_env(env)

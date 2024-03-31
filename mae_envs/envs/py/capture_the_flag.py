@@ -288,7 +288,10 @@ class GameScenario:
     def get_playground_constants(self):
         self.playground_constants['floor_size'] = 6
         self.playground_constants['grid_size'] = 31
-        self.playground_constants['door_size'] = 2
+        if self.playground == 0 or self.playground == 1:
+            self.playground_constants['door_size'] = 2
+        elif self.playground == 2:
+            self.playground_constants['door_size'] = 5
         self.playground_constants['box_size'] = 0.5
         self.playground_constants['flag_size'] = 0.2
         self.playground_constants['grab_radius'] = 0.25 / self.playground_constants['box_size']
@@ -315,12 +318,13 @@ class GameScenario:
             ]
         elif self.playground == 2:
             self.walls = [
-                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 0), coords(grid_size, -1)]),
-                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 0), coords(grid_size, 1)]),
+                Wall([coords(grid_size, 0), coords(grid_size, -1)], [coords(grid_size, 0), coords(grid_size, 1)]),
+                Wall([coords(grid_size, 1/3), coords(grid_size, -1/3)], [coords(grid_size, 1), coords(grid_size, -1/3)]),
+                Wall([coords(grid_size, -1/3), coords(grid_size, 1/3)], [coords(grid_size, -1), coords(grid_size, 1/3)]),
             ]
             self.doors = [
-                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 0)]),
-                Wall([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, 0)]),
+                Wall([coords(grid_size, 1/3), coords(grid_size, -1/3)], [coords(grid_size, 1/3), coords(grid_size, -1)]),
+                Wall([coords(grid_size, -1/3), coords(grid_size, 1/3)], [coords(grid_size, -1/3), coords(grid_size, 1)]),
             ]
         
         return (self.walls, self.doors)
@@ -339,12 +343,12 @@ class GameScenario:
             ]
         elif self.playground == 2:
             self.agents0 = [
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 1/3), coords(grid_size, -1/3)], [coords(grid_size, 1), coords(grid_size, 1/3)])),
+                partial(object_placement, bounds = ([coords(grid_size, 1/3), coords(grid_size, -1/3)], [coords(grid_size, 1), coords(grid_size, 1/3)])),
             ]
             self.agents1 = [
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, -1/3), coords(grid_size, 1/3)], [coords(grid_size, -1), coords(grid_size, -1/3)])),
+                partial(object_placement, bounds = ([coords(grid_size, -1/3), coords(grid_size, 1/3)], [coords(grid_size, -1), coords(grid_size, -1/3)])),
             ]
 
         return (self.agents0, self.agents1)
@@ -366,8 +370,8 @@ class GameScenario:
             self.long_boxes = []
         elif self.playground == 2:
             self.boxes = [
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 1/3), coords(grid_size, -1/3)], [coords(grid_size, 0), coords(grid_size, 0)])),
+                partial(object_placement, bounds = ([coords(grid_size, -1/3), coords(grid_size, 1/3)], [coords(grid_size, 0), coords(grid_size, 0)])),
             ]
             self.long_boxes = []
         
@@ -387,8 +391,8 @@ class GameScenario:
             ]
         elif self.playground == 2:
             self.ramps = [
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, 1), coords(grid_size, -1)])),
-                partial(object_placement, bounds = ([coords(grid_size, 0), coords(grid_size, 0)], [coords(grid_size, -1), coords(grid_size, 1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 1/3), coords(grid_size, -1/3)], [coords(grid_size, 1), coords(grid_size, 1/3)])),
+                partial(object_placement, bounds = ([coords(grid_size, -1/3), coords(grid_size, 1/3)], [coords(grid_size, -1), coords(grid_size, -1/3)])),
             ]
         
         return (self.ramps)

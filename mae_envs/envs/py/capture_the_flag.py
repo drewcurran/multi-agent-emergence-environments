@@ -575,7 +575,7 @@ class MaskUnseenAction(gym.Wrapper):
 Places object inside bounds.
 '''
 def coords(grid_size, proportion):
-    return int((proportion + 1) / 2 * grid_size - 0.5)
+    return int((proportion + 1) / 2 * (grid_size - 1))
 
 
 '''

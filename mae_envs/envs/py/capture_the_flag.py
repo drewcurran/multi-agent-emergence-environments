@@ -74,10 +74,14 @@ class GameEnvironment:
                               door_size = self.door_size,
                               friction = self.object_friction)
         env.add_module(walls)
-        f = open("testing/placements.txt", "a")
-        f.write("Placements: \n{}".format(env.placement_grid))
-        f.close()
-        print(env.placement_grid)
+        from mae_envs.modules.walls import add_walls_to_grid
+        add_walls_to_grid(env.placement_grid, self.walls[0])
+        with open("testing/placements.txt", "w") as file:
+            file.write("Placements: \n")
+            for row in env.placement_grid:
+                for cell in row:
+                    file.write("{} ".format(int(cell)))
+                file.write("\n")
 
         # Add agents to the environment
         agents = Agents(n_agents = len(self.agents[0] + self.agents[1]),

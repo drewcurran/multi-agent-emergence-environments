@@ -34,8 +34,8 @@ class Boxes(EnvModule):
     '''
     @store_args
     def __init__(self, n_boxes, n_elongated_boxes=0, placement_fn=None,
-                 box_size=0.5, box_length=3.3, box_width=0.3, box_mass=1.0, friction=None,
-                 box_only_z_rot=False, boxid_obs=True, boxsize_obs=False, polar_obs=True,
+                 box_size=0.5, box_length=3.3, box_width=0.3, box_height=1.0, box_mass=1.0,
+                 friction=None, box_only_z_rot=False, boxid_obs=True, boxsize_obs=False, polar_obs=True,
                  mark_box_corners=False, alignment=None):
         if type(n_boxes) not in [tuple, list, np.ndarray]:
             self.n_boxes = [n_boxes, n_boxes]
@@ -61,8 +61,10 @@ class Boxes(EnvModule):
                 n_xaligned = env._random_state.randint(self.curr_n_elongated_boxes + 1)
             else:
                 n_xaligned = self.alignment
-            self.box_size_array[:n_xaligned, :] = self.box_size * np.array([self.box_length, self.box_width, 1.0])
-            self.box_size_array[n_xaligned:self.curr_n_elongated_boxes, :] = (self.box_size * np.array([self.box_width, self.box_length, 1.0]))
+            self.box_size_array[:n_xaligned, :] = self.box_size * np.array([self.box_length, self.box_width, self.box_height])
+            self.box_size_array[n_xaligned:self.curr_n_elongated_boxes, :] = (self.box_size * np.array([self.box_width, self.box_length, self.box_height]))
+            self.box_size_array[self.curr_n_elongated_boxes:, :] = (self.box_size * np.array([1.0, 1.0, self.box_height]))
+
         env.metadata['box_size_array'] = self.box_size_array
 
         successful_placement = True
@@ -158,10 +160,9 @@ class Ramps(EnvModule):
         pass
 
     def build_world_step(self, env, floor, floor_size):
-        successful_placement = True
-
         env.metadata['curr_n_ramps'] = np.ones((self.n_ramps)).astype(np.bool)
 
+        successful_placement = True
         for i in range(self.n_ramps):
             char = chr(ord('A') + i % 26)
             geom = ObjFromXML('ramp', name=f"ramp{i}")
@@ -235,27 +236,44 @@ class Cylinders(EnvModule):
     @store_args
     def __init__(self, n_objects, diameter, height, make_static=False,
                  placement_fn=None, rgba=None):
-        if type(diameter) not in [list, np.ndarray]:
-            self.diameter = [diameter, diameter]
-        if type(height) not in [list, np.ndarray]:
-            self.height = [height, height]
+        pass
 
     def build_world_step(self, env, floor, floor_size):
-        env.metadata['curr_n_flags'] = np.ones((self.n_objects)).astype(np.bool)
-
-        default_name = 'static_cylinder' if self.make_static else 'moveable_cylinder'
-        diameter = env._random_state.uniform(self.diameter[0], self.diameter[1])
-        height = env._random_state.uniform(self.height[0], self.height[1])
-        obj_size = (diameter, height, 0)
-
+        cts = [0, 0]
         successful_placement = True
         for i in range(self.n_objects):
+            diameter = (self.diameter[i]
+                        if isinstance(self.diameter, list)
+                        else self.diameter)
+            if type(diameter) in [list, np.ndarray]:
+                diameter = env._random_state.uniform(diameter[0], diameter[1])
+
+            height = (self.height[i]
+                      if isinstance(self.height, list)
+                      else self.height)
+            if type(height) in [list, np.ndarray]:
+                height = env._random_state.uniform(height[0], height[1])
+
+            obj_size = (diameter, height, 0)
+
+            make_static = (self.make_static[i]
+                           if isinstance(self.make_static, list)
+                           else self.make_static)
+            if make_static:
+                state = 0
+                prefix = 'static_cylinder'
+            else:
+                state = 1
+                prefix = 'moveable_cylinder'
+
             rgba = (self.rgba[i][0]
                     if isinstance(self.rgba, list)
                     else self.rgba)
-            geom = Geom('cylinder', obj_size, name=f'{default_name}{i}', rgba=rgba)
-            if self.make_static:
+
+            geom = Geom('cylinder', obj_size, name=f'{prefix}{cts[state]}', rgba=rgba)
+            if make_static:
                 geom.mark_static()
+            cts[state] += 1
 
             if self.placement_fn is not None:
                 _placement_fn = (self.placement_fn[i]
@@ -269,32 +287,44 @@ class Cylinders(EnvModule):
             else:
                 floor.append(geom)
 
+        env.metadata['curr_n_zones'] = np.ones((cts[0]), dtype=np.bool)
+        env.metadata['curr_n_flags'] = np.ones((cts[1]), dtype=np.bool)
+        self.s_cylinder_geom_idxs = np.zeros((cts[0]), dtype=int)        
+        self.m_cylinder_geom_idxs = np.zeros((cts[1]), dtype=int)
+        self.m_cylinder_qpos_idxs = np.zeros((cts[1], 6), dtype=int)
+        self.m_cylinder_qvel_idxs = np.zeros((cts[1], 6), dtype=int)
+
         return successful_placement
 
     def modify_sim_step(self, env, sim):
-        if self.make_static:
-            self.s_cylinder_geom_idxs = np.array([sim.model.geom_name2id(f'static_cylinder{i}')
-                                                  for i in range(self.n_objects)])
-        else:
-            self.m_cylinder_geom_idxs = np.array([sim.model.geom_name2id(f'moveable_cylinder{i}')
-                                                  for i in range(self.n_objects)])
-            qpos_idxs = [qpos_idxs_from_joint_prefix(sim, f'moveable_cylinder{i}')
-                         for i in range(self.n_objects)]
-            qvel_idxs = [qvel_idxs_from_joint_prefix(sim, f'moveable_cylinder{i}')
-                         for i in range(self.n_objects)]
-            self.m_cylinder_qpos_idxs = np.array(qpos_idxs)
-            self.m_cylinder_qvel_idxs = np.array(qvel_idxs)
+        cts = [0, 0]
+        for i in range(self.n_objects):
+            make_static = (self.make_static[i]
+                           if isinstance(self.make_static, list)
+                           else self.make_static)
+            if make_static:
+                state = 0
+                self.s_cylinder_geom_idxs[cts[state]] = sim.model.geom_name2id(f'static_cylinder{cts[state]}')
+            else:
+                state = 1
+                self.m_cylinder_geom_idxs[cts[state]] = sim.model.geom_name2id(f'moveable_cylinder{cts[state]}')
+                self.m_cylinder_qpos_idxs[cts[state]] = qpos_idxs_from_joint_prefix(sim, f'moveable_cylinder{cts[state]}')
+                self.m_cylinder_qvel_idxs[cts[state]] = qvel_idxs_from_joint_prefix(sim, f'moveable_cylinder{cts[state]}')
+            cts[state] += 1
 
     def observation_step(self, env, sim):
         qpos = sim.data.qpos.copy()
         qvel = sim.data.qvel.copy()
 
-        if self.make_static:
+        obs = {}
+
+        if len(self.s_cylinder_geom_idxs) > 0:
             s_cylinder_geom_idxs = np.expand_dims(self.s_cylinder_geom_idxs, -1)
             s_cylinder_xpos = sim.data.geom_xpos[self.s_cylinder_geom_idxs]
-            obs = {'static_cylinder_geom_idxs': s_cylinder_geom_idxs,
-                   'static_cylinder_xpos': s_cylinder_xpos}
-        else:
+            obs['static_cylinder_geom_idxs'] = s_cylinder_geom_idxs
+            obs['static_cylinder_xpos'] = s_cylinder_xpos
+            
+        if len(self.m_cylinder_geom_idxs) > 0:
             m_cylinder_geom_idxs = np.expand_dims(self.m_cylinder_geom_idxs, -1)
             m_cylinder_xpos = sim.data.geom_xpos[self.m_cylinder_geom_idxs]
             m_cylinder_qpos = qpos[self.m_cylinder_qpos_idxs]
@@ -303,9 +333,9 @@ class Cylinders(EnvModule):
             polar_angle = np.concatenate([np.cos(mc_angle), np.sin(mc_angle)], -1)
             m_cylinder_qpos = np.concatenate([m_cylinder_qpos[:, :3], polar_angle], -1)
             m_cylinder_obs = np.concatenate([m_cylinder_qpos, m_cylinder_qvel], -1)
-            obs = {'moveable_cylinder_geom_idxs': m_cylinder_geom_idxs,
-                   'moveable_cylinder_xpos': m_cylinder_xpos,
-                   'moveable_cylinder_obs': m_cylinder_obs}
+            obs['moveable_cylinder_geom_idxs'] = m_cylinder_geom_idxs
+            obs['moveable_cylinder_xpos'] = m_cylinder_xpos
+            obs['moveable_cylinder_obs'] = m_cylinder_obs
 
         return obs
 

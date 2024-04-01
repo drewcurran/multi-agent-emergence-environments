@@ -24,22 +24,7 @@ from mae_envs.modules.util import uniform_placement
 Sets up the game environment.
 '''
 class GameEnvironment:
-    def __init__(self, playground, mode):
-        # Playground constants
-        self.scenario = GameScenario(playground, mode)
-        self.playground_constants = self.scenario.get_playground_constants()
-        for key, value in self.playground_constants.items(): 
-            setattr(self, key, value)
-        self.walls = self.scenario.get_walls()
-        self.agents = self.scenario.get_agents()
-        self.boxes = self.scenario.get_boxes()
-        self.ramps = self.scenario.get_ramps()
-
-        # World constants
-        self.floor_friction = 0.2
-        self.object_friction = 0.01
-        self.gravity = [0, 0, -50]
-
+    def __init__(self, playground, mode, floor_size, grid_size, lidar):
         # Display constants
         self.team_colors = [[np.array((66., 235., 244., 255.)) / 255], [(1., 0., 0., 1.)]]
         self.horizon = 80
@@ -51,6 +36,17 @@ class GameEnvironment:
         self.deterministic = False
         self.preparation_time = 0.4
         self.reward_type = 'joint_zero_sum'
+
+        # Playground constants
+        self.scenario = GameScenario(playground, mode, floor_size, grid_size, lidar)
+        self.playground_constants = self.scenario.get_playground_constants()
+        for key, value in self.playground_constants.items(): 
+            setattr(self, key, value)
+        self.walls = self.scenario.get_walls()
+        self.agents = self.scenario.get_agents()
+        self.boxes = self.scenario.get_boxes()
+        self.ramps = self.scenario.get_ramps()
+        self.flags = self.scenario.get_flags()
 
     def construct_env(self):
         # Create base environment
@@ -85,6 +81,7 @@ class GameEnvironment:
                       box_size = self.box_size,
                       box_length = self.box_length,
                       box_width = self.box_width,
+                      box_height = self.box_height,
                       friction = self.floor_friction,
                       boxid_obs = False,
                       box_only_z_rot = True,
@@ -98,29 +95,14 @@ class GameEnvironment:
                       pad_ramp_size = True)
         env.add_module(ramps)
 
-        # Add flags to the environment
-        flags = Cylinders(n_objects = 2,
-                          diameter = self.flag_size,
-                          height = self.flag_size * 2,
-                          placement_fn = [
-                              partial(object_placement, bounds = ([coords(self.grid_size, -3/4), coords(self.grid_size, 3/4)],)),
-                              partial(object_placement, bounds = ([coords(self.grid_size, 3/4), coords(self.grid_size, -3/4)],)),
-                          ],
-                          rgba = self.team_colors,
-                          make_static = False)
+        # Add flags and zones to the environment
+        flags = Cylinders(n_objects = len(self.flags[0] + self.flags[1]),
+                          diameter = [self.flag_diameter] * len(self.flags[0]) + [self.zone_diameter] * len(self.flags[1]),
+                          height = [self.flag_height] * len(self.flags[0]) + [self.zone_height] * len(self.flags[1]),
+                          placement_fn = self.flags[0] + self.flags[1],
+                          rgba = self.team_colors + self.team_colors,
+                          make_static = [False] * len(self.flags[0]) + [True] * len(self.flags[1]))
         env.add_module(flags)
-
-        # Add zones to the environment
-        zones = Cylinders(n_objects = 2,
-                          diameter = self.flag_size * 2,
-                          height = self.flag_size / 4,
-                          placement_fn = [
-                              partial(object_placement, bounds = ([coords(self.grid_size, 3/4), coords(self.grid_size, 3/4)],)),
-                              partial(object_placement, bounds = ([coords(self.grid_size, -3/4), coords(self.grid_size, -3/4)],)),
-                          ],
-                          rgba = self.team_colors,
-                          make_static = True)
-        env.add_module(zones)
 
         # Add LIDAR visualization to the environment
         if self.lidar > 0 and self.visualize_lidar:
@@ -141,7 +123,7 @@ class GameEnvironment:
         keys_mask_self = ['mask_aa_obs']
 
         # Masked external constants
-        keys_mask_external = ['lidar', 'mask_ab_obs', 'mask_ar_obs', 'mask_af_obs', 'mask_az_obs', 'mask_ab_obs_spoof']
+        keys_mask_external = ['lidar', 'mask_ab_obs', 'mask_ar_obs', 'mask_af_obs', 'mask_ab_obs_spoof']
 
         # Agent independent constants
         keys_copy = ['lidar', 'you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock']
@@ -153,16 +135,10 @@ class GameEnvironment:
         # Add gravity to the environment
         gravity = WorldConstants(gravity = self.gravity)
         env.add_module(gravity)
-
-        # Creates a dictionary for agent actions
-        env = SplitMultiAgentActions(env)
         
         # Assign team membership for each agent
         env = TeamMembership(env, 
                              team_index = np.append(np.zeros((len(self.agents[0]),)), np.ones((len(self.agents[1]),))))
-        
-        # Add masks for agent-to-agent observations
-        env = AgentAgentObsMask2D(env)
 
         # Apply reward functions for the game
         env = GameRewardWrapper(env,
@@ -170,31 +146,40 @@ class GameEnvironment:
                                 n1 = len(self.agents[1]),
                                 rew_type = self.reward_type)
         
-        # Discretize agent actions
+        # Creates a dictionary for agent actions
+        env = SplitMultiAgentActions(env)
+
+        # Discretize agent movement
         env = DiscretizeActionWrapper(env, 
                                       action_key = 'action_movement')
         
-        # Add masks for agent-to-box observations
-        env = AgentGeomObsMask2D(env,
-                                 pos_obs_key = 'box_pos',
-                                 mask_obs_key = 'mask_ab_obs',
-                                 geom_idxs_obs_key = 'box_geom_idxs')
+        # Add masks for agent-to-agent observations
+        env = AgentAgentObsMask2D(env)
         
-        # Add masks for agent-to-ramp observations
-        env = AgentGeomObsMask2D(env,
-                                 pos_obs_key = 'ramp_pos',
-                                 mask_obs_key = 'mask_ar_obs',
-                                 geom_idxs_obs_key = 'ramp_geom_idxs')
+        if len(self.boxes[0] + self.boxes[1]) > 0:
+            # Add masks for agent-to-box observations
+            env = AgentGeomObsMask2D(env,
+                                     pos_obs_key = 'box_pos',
+                                     mask_obs_key = 'mask_ab_obs',
+                                     geom_idxs_obs_key = 'box_geom_idxs')
         
-        # Add masks for agent-to-flag observations
-        env = AgentGeomObsMask2D(env,
-                                 pos_obs_key = 'moveable_cylinder_xpos',
-                                 mask_obs_key = 'mask_af_obs',
-                                 geom_idxs_obs_key = 'moveable_cylinder_geom_idxs')
+        if len(self.ramps) > 0:
+            # Add masks for agent-to-ramp observations
+            env = AgentGeomObsMask2D(env,
+                                     pos_obs_key = 'ramp_pos',
+                                     mask_obs_key = 'mask_ar_obs',
+                                     geom_idxs_obs_key = 'ramp_geom_idxs')
+        
+        if len(self.flags[0]) > 0:
+            # Add masks for agent-to-flag observations
+            env = AgentGeomObsMask2D(env,
+                                     pos_obs_key = 'moveable_cylinder_xpos',
+                                     mask_obs_key = 'mask_af_obs',
+                                     geom_idxs_obs_key = 'moveable_cylinder_geom_idxs')
 
         # Add ability for agents to grab boxes, ramps, and flags
         env = GrabObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))] + [f"ramp{i}:ramp" for i in range(len(self.ramps))] + [f"moveable_cylinder{i}" for i in range(2)],
+                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))] + [f"ramp{i}:ramp" for i in range(len(self.ramps))] + [f"moveable_cylinder{i}" for i in range(len(self.flags[0]))],
                              radius_multiplier = self.grab_radius,
                              obj_in_game_metadata_keys = ['curr_n_boxes', 'curr_n_ramps', 'curr_n_flags'])
         
@@ -267,24 +252,33 @@ class GameEnvironment:
 
 
 '''
-Designs the environment based on the phase.
+Designs the environment based on the game scenario.
 '''
 class GameScenario:
-    def __init__(self, playground, mode):   # TODO: Make function of grid_size
+    def __init__(self, playground, mode, floor_size, grid_size, lidar):
         self.playground = playground
         self.mode = mode
         self.playground_constants = {}
-        self.playground_constants['floor_size'] = 6
-        self.playground_constants['grid_size'] = 33
-        self.playground_constants['door_size'] = 2
-        self.playground_constants['box_size'] = 0.5
-        self.playground_constants['box_length'] = (self.playground_constants['floor_size'] - 1) / 2
-        self.playground_constants['box_width'] = 0.3
-        self.playground_constants['flag_size'] = 0.2
-        self.playground_constants['grab_radius'] = 0.25 / self.playground_constants['box_size']
-        self.playground_constants['alignment'] = 1
-        self.playground_constants['lidar'] = 0
+        self.playground_constants['floor_size'] = floor_size / 2
+        self.playground_constants['grid_size'] = grid_size + 1
+        self.playground_constants['lidar'] = lidar
         self.playground_constants['lock_type'] = 'any_lock_specific'
+
+        self.playground_constants['floor_friction'] = 0.2
+        self.playground_constants['object_friction'] = 0.01
+        self.playground_constants['gravity'] = [0, 0, -50]
+
+        self.playground_constants['door_size'] = int(grid_size / 16)
+        self.playground_constants['box_size'] = floor_size / 24
+        self.playground_constants['box_length'] = floor_size * (1 / 4 - 2 / grid_size)
+        self.playground_constants['box_width'] = 10 / grid_size
+        self.playground_constants['box_height'] = 12 / floor_size
+        self.playground_constants['flag_diameter'] = floor_size / 75
+        self.playground_constants['flag_height'] = 12 / floor_size
+        self.playground_constants['zone_diameter'] = floor_size / 50
+        self.playground_constants['zone_height'] = 1 / floor_size
+        self.playground_constants['grab_radius'] = 6 / floor_size
+        self.playground_constants['alignment'] = 1
     
     def get_playground_constants(self):
         return self.playground_constants
@@ -361,12 +355,12 @@ class GameScenario:
             self.long_boxes = []
         elif self.playground == 2:
             self.boxes = [
-                partial(object_placement, bounds = ([coords(grid_size, 1/2), coords(grid_size, -1/2)], [coords(grid_size, 0), coords(grid_size, 0)])),
-                partial(object_placement, bounds = ([coords(grid_size, -1/2), coords(grid_size, 1/2)], [coords(grid_size, 0), coords(grid_size, 0)])),
+                partial(object_placement, bounds = ([coords(grid_size, 1/2), coords(grid_size, -1/2)], [coords(grid_size, 0), coords(grid_size, 1/2)])),
+                partial(object_placement, bounds = ([coords(grid_size, -1/2), coords(grid_size, 1/2)], [coords(grid_size, 0), coords(grid_size, -1/2)])),
             ]
             self.long_boxes = [
-                partial(object_placement, bounds = ([coords(grid_size, 1/16), coords(grid_size, -1/2)],)),
-                partial(object_placement, bounds = ([coords(grid_size, -7/16), coords(grid_size, 1/2)],)),
+                partial(object_placement, bounds = ([coords(grid_size, 2 / (grid_size - 1)), coords(grid_size, -1/2)],)),
+                partial(object_placement, bounds = ([coords(grid_size, -1/2 + 2 / (grid_size - 1)), coords(grid_size, 1/2)],)),
             ]
         
         return (self.boxes, self.long_boxes)
@@ -390,6 +384,23 @@ class GameScenario:
             ]
         
         return (self.ramps)
+    
+    def get_flags(self):
+        grid_size = self.playground_constants['grid_size']
+
+        self.flags = [
+            partial(object_placement, bounds = ([coords(grid_size, -3/4), coords(grid_size, 3/4)], [coords(grid_size, -1), coords(grid_size, 1)])),
+            partial(object_placement, bounds = ([coords(grid_size, 3/4), coords(grid_size, -3/4)], [coords(grid_size, 1), coords(grid_size, -1)])),
+        ]
+        if self.mode == 1:
+            self.zones = [
+                partial(object_placement, bounds = ([coords(grid_size, -3/4), coords(grid_size, -3/4)], [coords(grid_size, -1), coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([coords(grid_size, 3/4), coords(grid_size, 3/4)], [coords(grid_size, 1), coords(grid_size, 1)])),
+            ]
+        else:
+            self.zones = []
+        
+        return (self.flags, self.zones)
     
     def get_reward():
         pass
@@ -588,8 +599,8 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
 '''
 Makes the environment.
 '''
-def make_env(playground = 1, mode = 0):
-    env_generator = GameEnvironment(playground, mode)
+def make_env(playground = 0, mode = 0, floor_size = 12, grid_size = 32, lidar = 0):
+    env_generator = GameEnvironment(playground, mode, floor_size, grid_size, lidar)
     env = env_generator.construct_env()
     env.reset()
     env = env_generator.govern_env(env)

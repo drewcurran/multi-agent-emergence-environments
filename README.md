@@ -1,5 +1,5 @@
 # Multiagent emergence environments
-Training policies and viewing environments adapted from [Emergent Tool Use From Multi-Agent Autocurricula](https://arxiv.org/abs/1909.07528) ([blog](https://openai.com/blog/emergent-tool-use/))
+Training policies and viewing environments adapted from Emergent Tool Use From Multi-Agent Autocurricula ([paper](https://arxiv.org/abs/1909.07528), [blog](https://openai.com/blog/emergent-tool-use/))
 
 ## Installation
 This repository depends on the [mujoco-worldgen](https://github.com/openai/mujoco-worldgen) package. You will need to clone the mujoco-worldgen repository and install it and its dependencies:

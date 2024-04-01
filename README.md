@@ -14,10 +14,13 @@ This repository has been tested only on Mac OS X and Ubuntu 16.04 with Python 3.
 ## Environment Generation
 The baseline environment is: \
 *Hide-and-seek* - `mae_envs/envs/py/hide_and_seek.py` - The environment studied in the paper. \
-The new environment is:
+The new environment is: \
 *Capture-the-flag* - `mae_envs/envs/py/capture_the_flag.py` - The environment with which transfer learning is applied. \
 The `bin/examine` script displays environments and can also play saved policies:
 ```
 bin/examine.py hide_and_seek
 bin/examine.py hide_and_seek_quadrant hide_and_seek_quadrant
 ``` 
+
+## Policy Optimization
+WIP

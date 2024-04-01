@@ -9,7 +9,7 @@ pip install -e mujoco-worldgen/
 pip install -e multi-agent-emergence-environments/
 pip install -r multi-agent-emergence-environments/requirements_ma_policy.txt
 ```
-### Hardware
+### Specifications
 ```
 macOS
 Python 3.6

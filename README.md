@@ -16,10 +16,13 @@ Python 3.6
 ```
 
 ## Environment Generation
-The baseline environment is: \
-*Hide-and-seek* - `mae_envs/envs/py/hide_and_seek.py` - The environment studied in the paper. \
-The new environment is: \
-*Capture-the-flag* - `mae_envs/envs/py/capture_the_flag.py` - The environment with which transfer learning is applied. \
+### Environments
+The two environments used are *hide-and-seek* and *capture-the-flag*:
+```
+mae_envs/envs/py/hide_and_seek.py
+mae_envs/envs/py/capture_the_flag.py
+```
+### Execution
 The `bin/examine` script displays environments and can also play saved policies:
 ```
 bin/examine.py hide_and_seek

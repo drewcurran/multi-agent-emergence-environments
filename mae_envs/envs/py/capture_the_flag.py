@@ -11,6 +11,7 @@ from mae_envs.wrappers.util import (DiscretizeActionWrapper, ConcatenateObsWrapp
                                     AddConstantObservationsWrapper)
 from mae_envs.wrappers.manipulation import (GrabObjWrapper, GrabClosestWrapper,
                                             LockObjWrapper, LockAllWrapper)
+from mae_envs.wrappers.game_mode import GameMode
 from mae_envs.wrappers.lidar import Lidar
 from mae_envs.wrappers.line_of_sight import AgentAgentObsMask2D, AgentGeomObsMask2D
 from mae_envs.wrappers.team import TeamMembership
@@ -39,7 +40,9 @@ class GameEnvironment:
         self.reward_type = 'joint_zero_sum'
 
         # Playground constants
-        self.scenario = GameScenario(playground, mode)
+        self.playground = playground
+        self.mode = mode
+        self.scenario = GameScenario(self.playground, self.mode)
         self.playground_constants = self.scenario.get_playground_constants()
         for key, value in self.playground_constants.items(): 
             setattr(self, key, value)
@@ -160,8 +163,11 @@ class GameEnvironment:
                              team_index = [0] * len(self.agents[0]) + [1] * len(self.agents[1]),
                              team_obs_key = 'team_id')
         
+        # Assign gamemode for each agent as a constant observation
+        env = GameMode(env, self.playground, self.mode)
+        
         # Observation keys
-        keys_self = ['agent_qpos_qvel', 'team_id']
+        keys_self = ['agent_qpos_qvel', 'team_id', 'game_mode']
         keys_mask_self = ['mask_aa_obs']
         keys_external = ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'flag_obs', 'zone_obs']
         keys_mask_external = ['lidar', 'mask_ab_obs', 'mask_ar_obs', 'mask_af_obs', 'mask_ab_obs_spoof']
@@ -230,7 +236,7 @@ class GameEnvironment:
         # Group observations based on key
         env = ConcatenateObsWrapper(env, 
                                     obs_groups = {
-                                        'agent_qpos_qvel': ['agent_qpos_qvel', 'team_id'],
+                                        'agent_qpos_qvel': ['agent_qpos_qvel', 'team_id', 'game_mode'],
                                         'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                                         'ramp_obs': ['ramp_obs', 'ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock'],
                                         'flag_obs': ['moveable_cylinder_obs'],

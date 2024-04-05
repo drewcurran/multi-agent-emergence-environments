@@ -74,6 +74,8 @@ def main(argv):
             raise Exception(f'Could not find environment based on pattern {env_name}')
         env.reset()
 
+        print(env.observation_space)
+
         policy_names = names[1:]
         policies = [load_policy(policy_name,
                                 core_dir=core_dir,

@@ -25,29 +25,31 @@ class TeamMembership(gym.ObservationWrapper):
         Note: This wrapper currently does not align the reward structure with the
               teams, but that could be easily implemented if desired.
     '''
-    def __init__(self, env, team_index=None, n_teams=2):
+    def __init__(self, env, team_index=None, n_teams=2, team_obs_key=None):
         super().__init__(env)
         self.n_agents = self.metadata['n_actors']
 
         if team_index is None:
             assert n_teams >= 1, "Number of teams must be at least 1"
-            # split teams: 5 agents and 3 teams will result in team_index = [0,0,1,1,2]
             team_index = np.array_split(np.arange(self.n_agents), n_teams)
             team_index = np.concatenate([np.ones_like(ar) * i for i, ar in enumerate(team_index)])
-
         assert len(team_index) == self.n_agents, (
             "team_index parameter length must be equal to number of agents")
         if isinstance(team_index, np.ndarray):
             assert team_index.ndim == 1, (
                 "team_index parameter must be numpy array of dimension 1")
-
-        # store in metadata property that gets automatically inherited
-        # make sure we copy value of team_index if it's a numpy array
+        
         self.metadata['team_index'] = np.array(team_index)
-        self.team_idx = np.array(team_index)
-        self.observation_space = update_obs_space(env, {'team_size': (self.n_agents, 1)})
+        self.team_idx = np.expand_dims(team_index, -1)
+        self.team_obs_key = team_obs_key
+        if self.team_obs_key is not None:
+            assert self.team_obs_key not in self.observation_space.spaces, (
+                f'Observation key {self.team_obs_key} exists in original observation space')
 
+            self.observation_space = update_obs_space(self, {self.team_obs_key: self.team_idx.shape})
+            
     def observation(self, obs):
-        obs['team_size'] = np.sum(self.team_idx[:, None] == self.team_idx[None, :],
-                                  axis=1, keepdims=True)
+        if self.team_obs_key is not None:
+            obs[self.team_obs_key] = self.team_idx
+
         return obs

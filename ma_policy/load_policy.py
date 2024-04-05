@@ -84,11 +84,6 @@ def load_policy(pattern, core_dir='', pols_dir='examples', exact=False, env=None
         policy_args['ac_space'] = env.action_space
 
     policy = MAPolicy(**policy_args)
-    with open("testing/policy.txt", "w") as file:
-            file.write("Policy Variables: \n")
-            for k in policy.get_variables():
-                file.write("{} ".format(k))
-                file.write("\n")
     del policy_dict['policy_fn_and_args']
 
     load_variables(policy, policy_dict)

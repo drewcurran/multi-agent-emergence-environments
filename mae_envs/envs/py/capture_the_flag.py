@@ -7,7 +7,8 @@ from mae_envs.wrappers.multi_agent import (SplitMultiAgentActions,
                                            SplitObservations, SelectKeysWrapper)
 from mae_envs.wrappers.util import (DiscretizeActionWrapper, ConcatenateObsWrapper,
                                     MaskActionWrapper, SpoofEntityWrapper,
-                                    DiscardMujocoExceptionEpisodes)
+                                    DiscardMujocoExceptionEpisodes, 
+                                    AddConstantObservationsWrapper)
 from mae_envs.wrappers.manipulation import (GrabObjWrapper, GrabClosestWrapper,
                                             LockObjWrapper, LockAllWrapper)
 from mae_envs.wrappers.lidar import Lidar
@@ -154,8 +155,13 @@ class GameEnvironment:
                              obj_in_game_metadata_keys = ['curr_n_ramps'],
                              agent_allowed_to_lock_keys = None)
         
+        # Assign team membership for each agent that is stored as a constant observation
+        env = TeamMembership(env,
+                             team_index = [0] * len(self.agents[0]) + [1] * len(self.agents[1]),
+                             team_obs_key = 'team_id')
+        
         # Observation keys
-        keys_self = ['agent_qpos_qvel']
+        keys_self = ['agent_qpos_qvel', 'team_id']
         keys_mask_self = ['mask_aa_obs']
         keys_external = ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'flag_obs', 'zone_obs']
         keys_mask_external = ['lidar', 'mask_ab_obs', 'mask_ar_obs', 'mask_af_obs', 'mask_ab_obs_spoof']
@@ -210,10 +216,6 @@ class GameEnvironment:
         # Allow agents to lock all objects
         env = LockAllWrapper(env,
                              remove_object_specific_lock = True)
-
-        # Assign team membership for each agent
-        env = TeamMembership(env,
-                             team_index = [0] * len(self.agents[0]) + [1] * len(self.agents[1]))
         
         # Apply reward functions for the game
         env = GameRewardWrapper(env,
@@ -228,7 +230,7 @@ class GameEnvironment:
         # Group observations based on key
         env = ConcatenateObsWrapper(env, 
                                     obs_groups = {
-                                        'agent_qpos_qvel': ['agent_qpos_qvel'],
+                                        'agent_qpos_qvel': ['agent_qpos_qvel', 'team_id'],
                                         'box_obs': ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                                         'ramp_obs': ['ramp_obs', 'ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock'],
                                         'flag_obs': ['moveable_cylinder_obs'],

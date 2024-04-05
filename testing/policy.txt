@@ -1,71 +1,124 @@
-Policy Variables: 
-<tf.Variable 'policy/normalize_self_obs/obsfilter/mean:0' shape=(10,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_self_obs/obsfilter/sq:0' shape=(10,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_self_obs/obsfilter/debiasing_term:0' shape=(10,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_agent_qpos_qvel/obsfilter/agent_qpos_qvel/mean:0' shape=(10,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_agent_qpos_qvel/obsfilter/agent_qpos_qvel/sq:0' shape=(10,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_agent_qpos_qvel/obsfilter/agent_qpos_qvel/debiasing_term:0' shape=(10,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_box_obs/obsfilter/box_obs/mean:0' shape=(12,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_box_obs/obsfilter/box_obs/sq:0' shape=(12,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_box_obs/obsfilter/box_obs/debiasing_term:0' shape=(12,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_lidar/obsfilter/lidar/mean:0' shape=(1,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_lidar/obsfilter/lidar/sq:0' shape=(1,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_lidar/obsfilter/lidar/debiasing_term:0' shape=(1,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_ramp_obs/obsfilter/ramp_obs/mean:0' shape=(9,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_ramp_obs/obsfilter/ramp_obs/sq:0' shape=(9,) dtype=float32_ref> 
-<tf.Variable 'policy/normalize_ramp_obs/obsfilter/ramp_obs/debiasing_term:0' shape=(9,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//circ_conv1d0/conv1d/kernel:0' shape=(3, 1, 9) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//circ_conv1d0/conv1d/bias:0' shape=(9,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-0/kernel:0' shape=(290, 128) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-0/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-1/kernel:0' shape=(292, 128) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-1/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-2/kernel:0' shape=(289, 128) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-2/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-3/kernel:0' shape=(280, 128) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense6-3/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/kernel:0' shape=(128, 256) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/bias:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/kernel:0' shape=(128, 128) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/mlp1/kernel:0' shape=(128, 128) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/mlp1/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense11-0/kernel:0' shape=(256, 256) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//dense11-0/bias:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//lstm12/rnn/basic_lstm_cell/kernel:0' shape=(512, 1024) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//lstm12/rnn/basic_lstm_cell/bias:0' shape=(1024,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//layernorm13/LayerNorm/beta:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_net//layernorm13/LayerNorm/gamma:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_out0/dense/kernel:0' shape=(256, 1) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_out0/dense/bias:0' shape=(1,) dtype=float32_ref> 
-<tf.Variable 'policy/vpred_out0/value0filter/mean:0' shape=() dtype=float32_ref> 
-<tf.Variable 'policy/vpred_out0/value0filter/sq:0' shape=() dtype=float32_ref> 
-<tf.Variable 'policy/vpred_out0/value0filter/debiasing_term:0' shape=() dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//circ_conv1d0/conv1d/kernel:0' shape=(3, 1, 9) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//circ_conv1d0/conv1d/bias:0' shape=(9,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-0/kernel:0' shape=(290, 128) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-0/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-1/kernel:0' shape=(292, 128) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-1/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-2/kernel:0' shape=(289, 128) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-2/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-3/kernel:0' shape=(280, 128) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense6-3/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/kernel:0' shape=(128, 256) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/bias:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/kernel:0' shape=(128, 128) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/mlp1/kernel:0' shape=(128, 128) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/mlp1/bias:0' shape=(128,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense11-0/kernel:0' shape=(256, 256) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//dense11-0/bias:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//lstm12/rnn/basic_lstm_cell/kernel:0' shape=(512, 1024) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//lstm12/rnn/basic_lstm_cell/bias:0' shape=(1024,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//layernorm13/LayerNorm/beta:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_net//layernorm13/LayerNorm/gamma:0' shape=(256,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_out/action_movement/dense/kernel:0' shape=(256, 33) dtype=float32_ref> 
-<tf.Variable 'policy/policy_out/action_movement/dense/bias:0' shape=(33,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_out/action_pull/dense/kernel:0' shape=(256, 2) dtype=float32_ref> 
-<tf.Variable 'policy/policy_out/action_pull/dense/bias:0' shape=(2,) dtype=float32_ref> 
-<tf.Variable 'policy/policy_out/action_glueall/dense/kernel:0' shape=(256, 2) dtype=float32_ref> 
-<tf.Variable 'policy/policy_out/action_glueall/dense/bias:0' shape=(2,) dtype=float32_ref> 
+Global Variables: 
+	<tf.Variable 'policy/normalize_self_obs/obsfilter/mean:0' shape=(10,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_self_obs/obsfilter/sq:0' shape=(10,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_self_obs/obsfilter/debiasing_term:0' shape=(10,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_agent_qpos_qvel/obsfilter/agent_qpos_qvel/mean:0' shape=(10,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_agent_qpos_qvel/obsfilter/agent_qpos_qvel/sq:0' shape=(10,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_agent_qpos_qvel/obsfilter/agent_qpos_qvel/debiasing_term:0' shape=(10,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_box_obs/obsfilter/box_obs/mean:0' shape=(12,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_box_obs/obsfilter/box_obs/sq:0' shape=(12,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_box_obs/obsfilter/box_obs/debiasing_term:0' shape=(12,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_lidar/obsfilter/lidar/mean:0' shape=(1,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_lidar/obsfilter/lidar/sq:0' shape=(1,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_lidar/obsfilter/lidar/debiasing_term:0' shape=(1,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_ramp_obs/obsfilter/ramp_obs/mean:0' shape=(9,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_ramp_obs/obsfilter/ramp_obs/sq:0' shape=(9,) dtype=float32_ref>
+	<tf.Variable 'policy/normalize_ramp_obs/obsfilter/ramp_obs/debiasing_term:0' shape=(9,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//circ_conv1d0/conv1d/kernel:0' shape=(3, 1, 9) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//circ_conv1d0/conv1d/bias:0' shape=(9,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-0/kernel:0' shape=(290, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-0/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-1/kernel:0' shape=(292, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-2/kernel:0' shape=(289, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-2/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-3/kernel:0' shape=(280, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-3/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/kernel:0' shape=(128, 256) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/mlp1/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/mlp1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense11-0/kernel:0' shape=(256, 256) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense11-0/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//lstm12/rnn/basic_lstm_cell/kernel:0' shape=(512, 1024) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//lstm12/rnn/basic_lstm_cell/bias:0' shape=(1024,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//layernorm13/LayerNorm/beta:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//layernorm13/LayerNorm/gamma:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_out0/dense/kernel:0' shape=(256, 1) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_out0/dense/bias:0' shape=(1,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_out0/value0filter/mean:0' shape=() dtype=float32_ref>
+	<tf.Variable 'policy/vpred_out0/value0filter/sq:0' shape=() dtype=float32_ref>
+	<tf.Variable 'policy/vpred_out0/value0filter/debiasing_term:0' shape=() dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//circ_conv1d0/conv1d/kernel:0' shape=(3, 1, 9) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//circ_conv1d0/conv1d/bias:0' shape=(9,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-0/kernel:0' shape=(290, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-0/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-1/kernel:0' shape=(292, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-2/kernel:0' shape=(289, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-2/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-3/kernel:0' shape=(280, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-3/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/kernel:0' shape=(128, 256) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/mlp1/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/mlp1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense11-0/kernel:0' shape=(256, 256) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense11-0/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//lstm12/rnn/basic_lstm_cell/kernel:0' shape=(512, 1024) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//lstm12/rnn/basic_lstm_cell/bias:0' shape=(1024,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//layernorm13/LayerNorm/beta:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//layernorm13/LayerNorm/gamma:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_movement/dense/kernel:0' shape=(256, 33) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_movement/dense/bias:0' shape=(33,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_pull/dense/kernel:0' shape=(256, 2) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_pull/dense/bias:0' shape=(2,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_glueall/dense/kernel:0' shape=(256, 2) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_glueall/dense/bias:0' shape=(2,) dtype=float32_ref>
+Trainable Variables: 
+	<tf.Variable 'policy/vpred_net//circ_conv1d0/conv1d/kernel:0' shape=(3, 1, 9) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//circ_conv1d0/conv1d/bias:0' shape=(9,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-0/kernel:0' shape=(290, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-0/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-1/kernel:0' shape=(292, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-2/kernel:0' shape=(289, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-2/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-3/kernel:0' shape=(280, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense6-3/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/kernel:0' shape=(128, 256) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/mlp1/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//self-attention8/residual_sa_block8/mlp1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense11-0/kernel:0' shape=(256, 256) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//dense11-0/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//lstm12/rnn/basic_lstm_cell/kernel:0' shape=(512, 1024) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//lstm12/rnn/basic_lstm_cell/bias:0' shape=(1024,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//layernorm13/LayerNorm/beta:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_net//layernorm13/LayerNorm/gamma:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_out0/dense/kernel:0' shape=(256, 1) dtype=float32_ref>
+	<tf.Variable 'policy/vpred_out0/dense/bias:0' shape=(1,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//circ_conv1d0/conv1d/kernel:0' shape=(3, 1, 9) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//circ_conv1d0/conv1d/bias:0' shape=(9,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-0/kernel:0' shape=(290, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-0/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-1/kernel:0' shape=(292, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-2/kernel:0' shape=(289, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-2/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-3/kernel:0' shape=(280, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense6-3/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/kernel:0' shape=(128, 256) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/qk_embed/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/self_attention/qkv_embed/v_embed/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/mlp1/kernel:0' shape=(128, 128) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//self-attention8/residual_sa_block8/mlp1/bias:0' shape=(128,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense11-0/kernel:0' shape=(256, 256) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//dense11-0/bias:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//lstm12/rnn/basic_lstm_cell/kernel:0' shape=(512, 1024) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//lstm12/rnn/basic_lstm_cell/bias:0' shape=(1024,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//layernorm13/LayerNorm/beta:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_net//layernorm13/LayerNorm/gamma:0' shape=(256,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_movement/dense/kernel:0' shape=(256, 33) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_movement/dense/bias:0' shape=(33,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_pull/dense/kernel:0' shape=(256, 2) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_pull/dense/bias:0' shape=(2,) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_glueall/dense/kernel:0' shape=(256, 2) dtype=float32_ref>
+	<tf.Variable 'policy/policy_out/action_glueall/dense/bias:0' shape=(2,) dtype=float32_ref>

@@ -395,7 +395,7 @@ class GameScenario:
             partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, -1), self.coords(grid_size, 1)])),
             partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
         ]
-        if self.mode == 1:
+        if self.mode == 2 or self.mode == 3:
             self.zones = [
                 partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, -1), self.coords(grid_size, -1)])),
                 partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, 1), self.coords(grid_size, 1)])),

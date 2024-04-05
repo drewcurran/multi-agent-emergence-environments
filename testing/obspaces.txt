@@ -15,7 +15,7 @@ capture_the_flag.py:
 
 playground = 0, mode = 0
 Dict(
-    agent_qpos_qvel:Box(3, 10), # hider, prep_obs -> team_id, playground, game_mode
+    agent_qpos_qvel:Box(3, 11), # hider, prep_obs -> team_id, playground, game_mode
     box_obs:Box(2, 12),
     flag_obs:Box(2, 15), # New observation key for flags
     lidar:Box(30, 1),
@@ -24,6 +24,6 @@ Dict(
     mask_ab_obs_spoof:Box(2,),
     mask_af_obs:Box(2,), # New observation key for flags
     mask_ar_obs:Box(1,),
-    observation_self:Box(10,), # hider, prep_obs -> team_id, playground, game_mode
+    observation_self:Box(11,), # hider, prep_obs -> team_id, playground, game_mode
     ramp_obs:Box(1, 9)
 )

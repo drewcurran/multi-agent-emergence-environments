@@ -35,6 +35,7 @@ class MAPolicy(object):
         self.scope = scope
         self.ob_space = ob_space
         self.ac_space = deepcopy(ac_space)
+        self.input_schemas = {}
         self.network_spec = network_spec
         self.v_network_spec = v_network_spec or self.network_spec
         self.stochastic = stochastic
@@ -54,22 +55,22 @@ class MAPolicy(object):
         assert isinstance(self.ob_space, gym.spaces.Dict)
         assert 'observation_self' in self.ob_space.spaces
 
-        # Action space will come in as a MA action space. Convert to a SA action space.
+        # Convert to a single-agent action space
+        # TODO: Is this the policy for the first agent?
         self.ac_space.spaces = {k: v.spaces[0] for k, v in self.ac_space.spaces.items()}
 
+        # Create a probability distribution type for each action space
         self.pdtypes = {k: make_pdtype(s) for k, s in self.ac_space.spaces.items()}
 
-        # Create input schemas for each action type
-        self.input_schemas = {
-            k: VariableSchema(shape=[BATCH, TIMESTEPS] + pdtype.sample_shape(),
-                              dtype=pdtype.sample_dtype())
-            for k, pdtype in self.pdtypes.items()
-        }
+        # Define variable with symbolic shape for each action
+        for k, pdtype in self.pdtypes.items():
+            self.input_schemas[k] = VariableSchema(shape = [BATCH, TIMESTEPS] + pdtype.sample_shape(),
+                                                   dtype = pdtype.sample_dtype())
 
-        # Creat input schemas for each observation
+        # Define variable with symbolic shape for each observation
         for k, v in self.ob_space.spaces.items():
-            self.input_schemas[k] = VariableSchema(shape=[BATCH, TIMESTEPS] + list(v.shape),
-                                                   dtype=tf.float32)
+            self.input_schemas[k] = VariableSchema(shape = [BATCH, TIMESTEPS] + list(v.shape),
+                                                   dtype = tf.float32)
 
         # Setup schemas and zero state for layers with state
         v_state_schemas, v_zero_states = construct_schemas_zero_state(
@@ -89,6 +90,7 @@ class MAPolicy(object):
                 self.phs = {name: schema.placeholder(name=name)
                             for name, schema in self.get_input_schemas().items()}
             self.build(self.phs)
+            print(self.phs)
 
     def build(self, inputs):
         with tf.variable_scope(self.scope, reuse=self.reuse):

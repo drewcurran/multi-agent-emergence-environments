@@ -60,7 +60,7 @@ def load_policy(pattern, core_dir='', pols_dir='examples', exact=False, env=None
                           pattern = pattern,
                           file = os.path.basename(pattern) if exact else '*',
                           file_types = ['', '.npz'])
-        return load_policy(match)
+        return load_policy(match, env=env)
 
     # Loads environment from python file
     if pattern.endswith(".npz"):

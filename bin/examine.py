@@ -68,6 +68,7 @@ def main(argv):
                                            exact=True,
                                            return_args_remaining=True,
                                            **kwargs)
+        print(env.action_space, "\n\n", env.observation_space, "\n\n")
         if isinstance(env.action_space, Tuple):
             env = JoinMultiAgentActions(env)
         if env is None:

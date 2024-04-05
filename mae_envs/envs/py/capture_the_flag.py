@@ -47,6 +47,7 @@ class GameEnvironment:
         self.boxes = self.scenario.get_boxes()
         self.ramps = self.scenario.get_ramps()
         self.flags = self.scenario.get_flags()
+        self.reward_fn = self.scenario.get_reward()
 
     def construct_env(self):
         # Create base environment
@@ -113,21 +114,6 @@ class GameEnvironment:
         return env
     
     def govern_env(self, env: Base):
-        # Self constants
-        keys_self = ['agent_qpos_qvel']
-
-        # External constants
-        keys_external = ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'flag_obs', 'zone_obs']
-
-        # Masked self constants
-        keys_mask_self = ['mask_aa_obs']
-
-        # Masked external constants
-        keys_mask_external = ['lidar', 'mask_ab_obs', 'mask_ar_obs', 'mask_af_obs', 'mask_ab_obs_spoof']
-
-        # Agent independent constants
-        keys_copy = ['lidar', 'you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock']
-
         # Add floor physics to the environment
         friction = FloorAttributes(friction = self.floor_friction)
         env.add_module(friction)
@@ -136,22 +122,50 @@ class GameEnvironment:
         gravity = WorldConstants(gravity = self.gravity)
         env.add_module(gravity)
         
-        # Assign team membership for each agent
-        env = TeamMembership(env, 
-                             team_index = np.append(np.zeros((len(self.agents[0]),)), np.ones((len(self.agents[1]),))))
-
-        # Apply reward functions for the game
-        env = GameRewardWrapper(env,
-                                n0 = len(self.agents[0]),
-                                n1 = len(self.agents[1]),
-                                rew_type = self.reward_type)
-        
-        # Creates a dictionary for agent actions
+        # Split movement by agent
         env = SplitMultiAgentActions(env)
 
         # Discretize agent movement
         env = DiscretizeActionWrapper(env, 
                                       action_key = 'action_movement')
+
+        # Allow agents to grab boxes, ramps, and flags
+        env = GrabObjWrapper(env,
+                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))] + [f"ramp{i}:ramp" for i in range(len(self.ramps))] + [f"moveable_cylinder{i}" for i in range(len(self.flags[0]))],
+                             radius_multiplier = self.grab_radius,
+                             obj_in_game_metadata_keys = ['curr_n_boxes', 'curr_n_ramps', 'curr_n_flags'])
+        
+        # Allow agents to lock boxes
+        env = LockObjWrapper(env,
+                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))],
+                             agent_idx_allowed_to_lock = np.arange(len(self.agents[0] + self.agents[1])),
+                             lock_type = self.lock_type,
+                             radius_multiplier = self.grab_radius,
+                             obj_in_game_metadata_keys = ["curr_n_boxes"],
+                             agent_allowed_to_lock_keys = None)
+        
+        # Allow agents to lock ramps
+        env = LockObjWrapper(env,
+                             body_names = [f'ramp{i}:ramp' for i in range(len(self.ramps))],
+                             agent_idx_allowed_to_lock = np.arange(len(self.agents[0] + self.agents[1])),
+                             lock_type = self.lock_type, 
+                             ac_obs_prefix = 'ramp_',
+                             radius_multiplier = self.grab_radius,
+                             obj_in_game_metadata_keys = ['curr_n_ramps'],
+                             agent_allowed_to_lock_keys = None)
+        
+        # Observation keys
+        keys_self = ['agent_qpos_qvel']
+        keys_mask_self = ['mask_aa_obs']
+        keys_external = ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'flag_obs', 'zone_obs']
+        keys_mask_external = ['lidar', 'mask_ab_obs', 'mask_ar_obs', 'mask_af_obs', 'mask_ab_obs_spoof']
+        keys_copy = ['lidar', 'you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock']
+
+        # Add LIDAR for each agent
+        if self.lidar > 0:
+            env = Lidar(env,
+                        n_lidar_per_agent = self.lidar,
+                        visualize_lidar = self.visualize_lidar)
         
         # Add masks for agent-to-agent observations
         env = AgentAgentObsMask2D(env)
@@ -177,65 +191,45 @@ class GameEnvironment:
                                      mask_obs_key = 'mask_af_obs',
                                      geom_idxs_obs_key = 'moveable_cylinder_geom_idxs')
 
-        # Add ability for agents to grab boxes, ramps, and flags
-        env = GrabObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))] + [f"ramp{i}:ramp" for i in range(len(self.ramps))] + [f"moveable_cylinder{i}" for i in range(len(self.flags[0]))],
-                             radius_multiplier = self.grab_radius,
-                             obj_in_game_metadata_keys = ['curr_n_boxes', 'curr_n_ramps', 'curr_n_flags'])
-        
-        # Add ability for agents to lock boxes
-        env = LockObjWrapper(env,
-                             body_names = [f'moveable_box{i}' for i in range(np.max(len(self.boxes[0] + self.boxes[1])))],
-                             agent_idx_allowed_to_lock = np.arange(len(self.agents[0] + self.agents[1])),
-                             lock_type = self.lock_type,
-                             radius_multiplier = self.grab_radius,
-                             obj_in_game_metadata_keys = ["curr_n_boxes"],
-                             agent_allowed_to_lock_keys = None)
-        
-        # Add ability for agents to lock ramps
-        env = LockObjWrapper(env,
-                             body_names = [f'ramp{i}:ramp' for i in range(len(self.ramps))],
-                             agent_idx_allowed_to_lock = np.arange(len(self.agents[0] + self.agents[1])),
-                             lock_type = self.lock_type, 
-                             ac_obs_prefix = 'ramp_',
-                             radius_multiplier = self.grab_radius,
-                             obj_in_game_metadata_keys = ['curr_n_ramps'],
-                             agent_allowed_to_lock_keys = None)
-        
-        # Adds LIDAR for each agent
-        if self.lidar > 0:
-            env = Lidar(env,
-                        n_lidar_per_agent = self.lidar,
-                        visualize_lidar = self.visualize_lidar)
-
         # Splits observations for each agent
         env = SplitObservations(env,
                                 keys_self = keys_self + keys_mask_self,
                                 keys_copy = keys_copy,
                                 keys_self_matrices = keys_mask_self)
         
-        # Adds extra entities to ensure environment matches
+        # Ensure observation dimension matches environment requirements
         env = SpoofEntityWrapper(env, 
                                  total_n_entities = np.max(len(self.boxes[0] + self.boxes[1])),
                                  keys = ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
                                  mask_keys = ['mask_ab_obs'])
         
-        # Gives agents the ability to lock all objects
-        env = LockAllWrapper(env,
-                             remove_object_specific_lock = True)
-        
-        # Adds masks for possible actions
+        # Apply observation mask to action space
         env = MaskActionWrapper(env,
                                 action_key = 'action_pull',
                                 mask_keys = ['mask_ab_obs', 'mask_ar_obs', 'mask_af_obs'])
 
         # Enforce that agents only grab the closest object
         env = GrabClosestWrapper(env)
+
+        # Allow agents to lock all objects
+        env = LockAllWrapper(env,
+                             remove_object_specific_lock = True)
+
+        # Assign team membership for each agent
+        env = TeamMembership(env,
+                             team_index = [0] * len(self.agents[0]) + [1] * len(self.agents[1]))
+        
+        # Apply reward functions for the game
+        env = GameRewardWrapper(env,
+                                team0 = self.agents[0],
+                                team1 = self.agents[1],
+                                rew_fn = self.reward_fn,
+                                rew_type = self.reward_type)
         
         # Catches Mujoco exceptions
         env = DiscardMujocoExceptionEpisodes(env)
 
-        # Groups observations based on key
+        # Group observations based on key
         env = ConcatenateObsWrapper(env, 
                                     obs_groups = {
                                         'agent_qpos_qvel': ['agent_qpos_qvel'],
@@ -243,8 +237,8 @@ class GameEnvironment:
                                         'ramp_obs': ['ramp_obs', 'ramp_you_lock', 'ramp_team_lock', 'ramp_obj_lock'],
                                         'flag_obs': ['moveable_cylinder_obs'],
                                     })
-        
-        # Selects keys for final observations
+
+        # Select which keys are passed as the observation space
         env = SelectKeysWrapper(env,
                                 keys_self = keys_self,
                                 keys_other = keys_external + keys_mask_self + keys_mask_external)
@@ -405,79 +399,35 @@ class GameScenario:
         
         return (self.flags, self.zones)
     
-    def get_reward():
-        pass
+    def get_reward(self):
+        return None
 
 
 '''
 Keeps track of important statistics that are indicative of game dynamics.
 '''
 class TrackStatWrapper(gym.Wrapper):
-    def __init__(self, env, n_boxes, n_ramps, n_food):
+    def __init__(self, env):
         super().__init__(env)
-        self.n_boxes = n_boxes
-        self.n_ramps = n_ramps
-        self.n_food = n_food
-
+        
     def reset(self):
         obs = self.env.reset()
-        if self.n_boxes > 0:
-            self.box_pos_start = obs['box_pos']
-        if self.n_ramps > 0:
-            self.ramp_pos_start = obs['ramp_pos']
-        if self.n_food > 0:
-            self.total_food_eaten = np.sum(obs['food_eat'])
-
-        self.in_prep_phase = True
+        
+        self.initial_statistic = True
 
         return obs
 
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
 
-        if self.n_food > 0:
-            self.total_food_eaten += np.sum(obs['food_eat'])
-
-        if self.in_prep_phase and obs['prep_obs'][0, 0] == 1.0:
-            # Track statistics at end of preparation phase
-            self.in_prep_phase = False
-
-            if self.n_boxes > 0:
-                self.max_box_move_prep = np.max(np.linalg.norm(obs['box_pos'] - self.box_pos_start, axis=-1))
-                self.num_box_lock_prep = np.sum(obs['obj_lock'])
-            if self.n_ramps > 0:
-                self.max_ramp_move_prep = np.max(np.linalg.norm(obs['ramp_pos'] - self.ramp_pos_start, axis=-1))
-                if 'ramp_obj_lock' in obs:
-                    self.num_ramp_lock_prep = np.sum(obs['ramp_obj_lock'])
-            if self.n_food > 0:
-                self.total_food_eaten_prep = self.total_food_eaten
-
+        # Track statistics at end of episode
         if done:
-            # Track statistics at end of episode
-            if self.n_boxes > 0:
-                self.max_box_move = np.max(np.linalg.norm(obs['box_pos'] - self.box_pos_start, axis=-1))
-                self.num_box_lock = np.sum(obs['obj_lock'])
-                info.update({
-                    'max_box_move_prep': self.max_box_move_prep,
-                    'max_box_move': self.max_box_move,
-                    'num_box_lock_prep': self.num_box_lock_prep,
-                    'num_box_lock': self.num_box_lock})
-
-            if self.n_ramps > 0:
-                self.max_ramp_move = np.max(np.linalg.norm(obs['ramp_pos'] - self.ramp_pos_start, axis=-1))
-                info.update({
-                    'max_ramp_move_prep': self.max_ramp_move_prep,
-                    'max_ramp_move': self.max_ramp_move})
-                if 'ramp_obj_lock' in obs:
-                    self.num_ramp_lock = np.sum(obs['ramp_obj_lock'])
-                    info.update({
-                        'num_ramp_lock_prep': self.num_ramp_lock_prep,
-                        'num_ramp_lock': self.num_ramp_lock})
-
-            if self.n_food > 0:
-                info.update({
-                    'food_eaten': self.total_food_eaten,
-                    'food_eaten_prep': self.total_food_eaten_prep})
+            self.tracked_statistic = False
+            
+            info.update({
+                'initial_statistic': self.initial_statistic,
+                'tracked_statistic': self.tracked_statistic,
+            })
 
         return obs, rew, done, info
 
@@ -495,20 +445,15 @@ Args:
     reward_scale (float): scales the reward by this factor
 '''
 class GameRewardWrapper(gym.Wrapper):
-    def __init__(self, env, n0, n1, rew_type='selfish', reward_scale=1.0):
+    def __init__(self, env, team0, team1, rew_fn=None, rew_type='selfish', reward_scale=1.0):
         super().__init__(env)
         self.n_agents = self.unwrapped.n_agents
+        self.rew_fn = rew_fn
         self.rew_type = rew_type
-        self.n0 = n0
-        self.n1 = n1
+        self.n0 = len(team0)
+        self.n1 = len(team1)
         self.reward_scale = reward_scale
-        assert n0 + n1 == self.n_agents, "n0 + n1 must equal n_agents"
-
-        self.metadata['n_hiders'] = n0
-        self.metadata['n_seekers'] = n1
-        self.metadata['hiders_score'] = 0
-        self.metadata['seekers_score'] = 0
-        self.metadata['prev_score_diff'] = 0
+        assert self.n0 + self.n1 == self.n_agents, "n0 + n1 must equal n_agents"
 
         # Agent names are used to plot agent-specific rewards on tensorboard
         self.unwrapped.agent_names = [f'hider{i}' for i in range(self.n0)] + \
@@ -517,11 +462,12 @@ class GameRewardWrapper(gym.Wrapper):
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
 
-        difference = self.metadata['hiders_score'] - self.metadata['seekers_score']
-        this_rew = np.ones((self.n_agents,))
-        this_rew[:self.n0] = difference - self.metadata['prev_score_diff'] / 2
-        this_rew[self.n0:] = self.metadata['prev_score_diff'] / 2 - difference
-        self.metadata['prev_score_diff'] = difference
+        if self.rew_fn is None:
+            this_rew = np.ones((self.n_agents,))
+            this_rew[:self.n0][np.any(obs['mask_aa_obs'][self.n0:, :self.n0], 0)] = -1.0
+            this_rew[self.n0:][~np.any(obs['mask_aa_obs'][self.n0:, :self.n0], 1)] = -1.0
+        else:
+            this_rew = self.rew_fn(self.n0, self.n1)
 
         if self.rew_type == 'joint_mean':
             this_rew[:self.n0] = this_rew[:self.n0].mean()
@@ -540,38 +486,6 @@ class GameRewardWrapper(gym.Wrapper):
     
     def reset(self):
         return self.env.reset()
-
-
-'''
-Masks a (binary) action with some probability if agent or any of its teammates was being observed
-by opponents at any of the last n_latency time step.
-
-Args:
-    team_idx (int): Team index (e.g. 0 = hiders) of team whose actions are
-                    masked
-    action_key (string): key of action to be masked
-'''
-class MaskUnseenAction(gym.Wrapper):
-    def __init__(self, env, team_idx, action_key):
-        super().__init__(env)
-        self.team_idx = team_idx
-        self.action_key = action_key
-        self.n_agents = self.unwrapped.n_agents
-        self.n0 = self.metadata['n_hiders']
-
-    def reset(self):
-        self.prev_obs = self.env.reset()
-        self.this_team = self.metadata['team_index'] == self.team_idx
-
-        return deepcopy(self.prev_obs)
-
-    def step(self, action):
-        is_caught = np.any(self.prev_obs['mask_aa_obs'][self.n0:, :self.n0])
-        if is_caught:
-            action[self.action_key][self.this_team] = 0
-
-        self.prev_obs, rew, done, info = self.env.step(action)
-        return deepcopy(self.prev_obs), rew, done, info
 
 
 '''

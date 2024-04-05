@@ -6,8 +6,8 @@ Training policies and viewing environments adapted from Emergent Tool Use From M
 ```
 pip install -r mujoco-worldgen/requirements.txt
 pip install -e mujoco-worldgen/
-pip install -e multi-agent-emergence-environments/
-pip install -r multi-agent-emergence-environments/requirements_ma_policy.txt
+pip install -e ./
+pip install -r ./requirements_ma_policy.txt
 ```
 ### Specifications
 ```

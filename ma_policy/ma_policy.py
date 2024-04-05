@@ -59,7 +59,7 @@ class MAPolicy(object):
         # TODO: Is this the policy for the first agent?
         self.ac_space.spaces = {k: v.spaces[0] for k, v in self.ac_space.spaces.items()}
 
-        # Create a probability distribution type for each action space
+        # Create a probability distribution type for each action
         self.pdtypes = {k: make_pdtype(s) for k, s in self.ac_space.spaces.items()}
 
         # Define variable with symbolic shape for each action
@@ -77,7 +77,6 @@ class MAPolicy(object):
             self.v_network_spec, self.ob_space, 'vpred_net')
         pi_state_schemas, pi_zero_states = construct_schemas_zero_state(
             self.network_spec, self.ob_space, 'policy_net')
-
         self.state_keys = list(v_state_schemas.keys()) + list(pi_state_schemas.keys())
         self.input_schemas.update(v_state_schemas)
         self.input_schemas.update(pi_state_schemas)
@@ -85,12 +84,12 @@ class MAPolicy(object):
         self.zero_state.update(v_zero_states)
         self.zero_state.update(pi_zero_states)
 
+        # Construct the graph
         if build_act:
             with tf.variable_scope(self.scope, reuse=self.reuse):
                 self.phs = {name: schema.placeholder(name=name)
                             for name, schema in self.get_input_schemas().items()}
             self.build(self.phs)
-            print(self.phs)
 
     def build(self, inputs):
         with tf.variable_scope(self.scope, reuse=self.reuse):
@@ -103,9 +102,10 @@ class MAPolicy(object):
                 inputs (dict): input dictionary containing tf tensors
                 gaussian_fixed_var (bool): If True the policies variance won't be conditioned on state
         '''
+        # Actions in the action space
         taken_actions = {k: inputs[k] for k in self.pdtypes.keys()}
 
-        #  Copy inputs to not overwrite. Don't need to pass actions to policy, so exlcude these
+        # Copy of observations
         processed_inp = {k: v for k, v in inputs.items() if k not in self.pdtypes.keys()}
 
         self._normalize_inputs(processed_inp)
@@ -202,6 +202,7 @@ class MAPolicy(object):
             self.add_running_mean_std(rms=self.value_rms, name='feedback.value0', axes=normalize_axes)
 
     def _normalize_inputs(self, processed_inp):
+        # Normalize inputs across self observations
         with tf.variable_scope('normalize_self_obs'):
             ob_rms_self = EMAMeanStd(shape=self.ob_space.spaces['observation_self'].shape,
                                      scope="obsfilter", beta=self._ema_beta, per_element_update=False)
@@ -213,9 +214,10 @@ class MAPolicy(object):
         for key in self.ob_space.spaces.keys():
             if key == 'observation_self':
                 continue
-            elif 'mask' in key:  # Don't normalize observation masks
+            elif 'mask' in key:
                 pass
             else:
+                # Normalize inputs across external observations
                 with tf.variable_scope(f'normalize_{key}'):
                     ob_rms = EMAMeanStd(shape=self.ob_space.spaces[key].shape[1:],
                                         scope=f"obsfilter/{key}", beta=self._ema_beta, per_element_update=False)

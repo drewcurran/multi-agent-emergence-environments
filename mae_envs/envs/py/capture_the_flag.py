@@ -24,7 +24,7 @@ from mae_envs.modules.util import uniform_placement
 Sets up the game environment.
 '''
 class GameEnvironment:
-    def __init__(self, playground, mode):
+    def __init__(self, playground, mode, floor_size, grid_size, lidar):
         # Display constants
         self.team_colors = [[np.array((66., 235., 244., 255.)) / 255], [(1., 0., 0., 1.)]]
         self.horizon = 80
@@ -38,7 +38,7 @@ class GameEnvironment:
         self.reward_type = 'joint_zero_sum'
 
         # Playground constants
-        self.scenario = GameScenario(playground, mode)
+        self.scenario = GameScenario(playground, mode, floor_size, grid_size, lidar)
         self.playground_constants = self.scenario.get_playground_constants()
         for key, value in self.playground_constants.items(): 
             setattr(self, key, value)
@@ -93,7 +93,7 @@ class GameEnvironment:
         ramps = Ramps(n_ramps = len(self.ramps),
                       placement_fn = self.ramps,
                       friction = self.object_friction,
-                      pad_ramp_size = False)
+                      pad_ramp_size = True)
         env.add_module(ramps)
 
         # Add flags and zones to the environment
@@ -162,30 +162,34 @@ class GameEnvironment:
         keys_copy = ['lidar', 'you_lock', 'team_lock', 'ramp_you_lock', 'ramp_team_lock']
 
         # Add LIDAR for each agent
-        env = Lidar(env,
-                    n_lidar_per_agent = self.lidar,
-                    visualize_lidar = self.visualize_lidar)
+        if self.lidar > 0:
+            env = Lidar(env,
+                        n_lidar_per_agent = self.lidar,
+                        visualize_lidar = self.visualize_lidar)
         
         # Add masks for agent-to-agent observations
         env = AgentAgentObsMask2D(env)
         
-        # Add masks for agent-to-box observations
-        env = AgentGeomObsMask2D(env,
-                                 pos_obs_key = 'box_pos',
-                                 mask_obs_key = 'mask_ab_obs',
-                                 geom_idxs_obs_key = 'box_geom_idxs')
+        if len(self.boxes[0] + self.boxes[1]) > 0:
+            # Add masks for agent-to-box observations
+            env = AgentGeomObsMask2D(env,
+                                     pos_obs_key = 'box_pos',
+                                     mask_obs_key = 'mask_ab_obs',
+                                     geom_idxs_obs_key = 'box_geom_idxs')
         
-        # Add masks for agent-to-ramp observations
-        env = AgentGeomObsMask2D(env,
-                                 pos_obs_key = 'ramp_pos',
-                                 mask_obs_key = 'mask_ar_obs',
-                                 geom_idxs_obs_key = 'ramp_geom_idxs')
+        if len(self.ramps) > 0:
+            # Add masks for agent-to-ramp observations
+            env = AgentGeomObsMask2D(env,
+                                     pos_obs_key = 'ramp_pos',
+                                     mask_obs_key = 'mask_ar_obs',
+                                     geom_idxs_obs_key = 'ramp_geom_idxs')
         
-        # Add masks for agent-to-flag observations
-        env = AgentGeomObsMask2D(env,
-                                 pos_obs_key = 'moveable_cylinder_xpos',
-                                 mask_obs_key = 'mask_af_obs',
-                                 geom_idxs_obs_key = 'moveable_cylinder_geom_idxs')
+        if len(self.flags[0]) > 0:
+            # Add masks for agent-to-flag observations
+            env = AgentGeomObsMask2D(env,
+                                     pos_obs_key = 'moveable_cylinder_xpos',
+                                     mask_obs_key = 'mask_af_obs',
+                                     geom_idxs_obs_key = 'moveable_cylinder_geom_idxs')
 
         # Splits observations for each agent
         env = SplitObservations(env,
@@ -193,7 +197,7 @@ class GameEnvironment:
                                 keys_copy = keys_copy,
                                 keys_self_matrices = keys_mask_self)
         
-        # Ensure observation dimension for boxes matches environment requirements
+        # Ensure observation dimension matches environment requirements
         env = SpoofEntityWrapper(env, 
                                  total_n_entities = np.max(len(self.boxes[0] + self.boxes[1])),
                                  keys = ['box_obs', 'you_lock', 'team_lock', 'obj_lock'],
@@ -246,13 +250,13 @@ class GameEnvironment:
 Designs the environment based on the game scenario.
 '''
 class GameScenario:
-    def __init__(self, playground, mode, floor_size = 12, grid_size = 32):
+    def __init__(self, playground, mode, floor_size, grid_size, lidar):
         self.playground = playground
         self.mode = mode
         self.playground_constants = {}
         self.playground_constants['floor_size'] = floor_size / 2
         self.playground_constants['grid_size'] = grid_size + 1
-        self.playground_constants['lidar'] = 30
+        self.playground_constants['lidar'] = lidar
         self.playground_constants['lock_type'] = 'any_lock_specific'
         self.playground_constants['floor_friction'] = 0.2
         self.playground_constants['object_friction'] = 0.01
@@ -505,12 +509,9 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
 '''
 Makes the environment.
 '''
-def make_env(playground = 0, mode = 0):
-    env_generator = GameEnvironment(playground, mode)
+def make_env(playground = 0, mode = 0, floor_size = 12, grid_size = 32, lidar = 0):
+    env_generator = GameEnvironment(playground, mode, floor_size, grid_size, lidar)
     env = env_generator.construct_env()
     env.reset()
     env = env_generator.govern_env(env)
     return env
-
-if __name__ == '__main__':
-    make_env()

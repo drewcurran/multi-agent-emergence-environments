@@ -74,18 +74,22 @@ def load_policy(pattern, core_dir='', pols_dir='examples', exact=False, env=None
         sess = tf.Session(config=tf_config)
         sess.__enter__()
 
+    # Load the policy from the filepath
     policy_dict = dict(np.load(pattern))
     policy_fn_and_args_raw = pickle.loads(policy_dict['policy_fn_and_args'])
     policy_args = policy_fn_and_args_raw['args']
     policy_args['scope'] = scope
 
+    # Use the observation and action space of the environment
     if env is not None:
         policy_args['ob_space'] = env.observation_space
         policy_args['ac_space'] = env.action_space
 
+    # Build the policy
     policy = MAPolicy(**policy_args)
     del policy_dict['policy_fn_and_args']
 
+    # Load the weights for the policy
     load_variables(policy, policy_dict)
 
     return policy

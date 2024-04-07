@@ -26,7 +26,7 @@ mae_envs/envs/py/capture_the_flag.py
 The `bin/examine` script displays environments and can also play saved policies:
 ```
 bin/examine.py hide_and_seek
-bin/examine.py hide_and_seek_quadrant hide_and_seek_quadrant
+bin/examine.py capture_the_flag 1_start
 ``` 
 
 ## Policy Optimization

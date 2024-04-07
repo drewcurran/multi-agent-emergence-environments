@@ -24,6 +24,19 @@ def replace_base_scope(var_name, new_base_scope):
     split[0] = new_base_scope
     return os.path.normpath('/'.join(split))
 
+def adjust_weight_length(var, weight):
+    var_shape = tuple(shape_list(var))
+    for dim in range(len(var_shape)):
+        if var_shape[dim] > weight.shape[dim]:
+            print(f"Weights of shape {weight.shape} extended to match {var}. Make sure weights correspond.")
+            added_weight = np.random.randn(*(var_shape[:dim] + (var_shape[dim] - weight.shape[dim],) + var_shape[dim + 1:]))
+            new_weight = np.append(weight, added_weight, axis=dim)
+            return new_weight
+        if var_shape[dim] < weight.shape[dim]:
+            print(f"Weights of shape {weight.shape} truncated to match {var}. Make sure weights correspond.")
+            new_weight = weight[:,:,:var_shape[-1]]
+            return new_weight
+    return weight
 
 def load_variables(policy, weights):
     weights = {os.path.normpath(key): value for key, value in weights.items()}
@@ -36,7 +49,8 @@ def load_variables(policy, weights):
             tf.get_default_session().run(var.initializer)
         else:
             try:
-                assert np.all(np.array(shape_list(var)) == np.array(weights[var_name].shape))
+                assert len(np.array(shape_list(var))) == len(np.array(weights[var_name].shape))
+                weights[var_name] = adjust_weight_length(var, weights[var_name])
                 assign_ops.append(var.assign(weights[var_name]))
             except Exception:
                 traceback.print_exc(file=sys.stdout)

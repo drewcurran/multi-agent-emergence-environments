@@ -86,14 +86,14 @@ class MAPolicy(object):
 
         # Construct the graph
         if build_act:
-            with tf.variable_scope(self.scope, reuse=self.reuse):
+            with tf.compat.v1.variable_scope(self.scope, reuse=self.reuse):
                 self.phs = {name: schema.placeholder(name=name)
                             for name, schema in self.get_input_schemas().items()}
             self.build(self.phs)
 
     def build(self, inputs):
-        with tf.variable_scope(self.scope, reuse=self.reuse):
-            self.full_scope_name = tf.get_variable_scope().name
+        with tf.compat.v1.variable_scope(self.scope, reuse=self.reuse):
+            self.full_scope_name = tf.compat.v1.get_variable_scope().name
             self._init(inputs, **self.kwargs)
 
     def _init(self, inputs, gaussian_fixed_var=True, **kwargs):

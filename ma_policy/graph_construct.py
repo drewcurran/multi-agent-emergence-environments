@@ -238,10 +238,10 @@ def construct_schemas_zero_state(spec, ob_space, scope=''):
         layer_type = layer.pop('layer_type')
 
         if layer_type == 'lstm':
-            size = tf.contrib.rnn.BasicLSTMCell(layer['units']).state_size
-            schemas[scope + f'_lstm{i}_state_c'] = VariableSchema(shape=[BATCH, size.c], dtype=tf.float32)
-            schemas[scope + f'_lstm{i}_state_h'] = VariableSchema(shape=[BATCH, size.h], dtype=tf.float32)
-            zero_states[scope + f'_lstm{i}_state_c'] = np.expand_dims(np.zeros(size.c, dtype=np.float32), 0)
-            zero_states[scope + f'_lstm{i}_state_h'] = np.expand_dims(np.zeros(size.h, dtype=np.float32), 0)
+            size = tf.keras.layers.LSTMCell(layer['units']).units
+            schemas[scope + f'_lstm{i}_state_c'] = VariableSchema(shape=[BATCH, size], dtype=tf.float32)
+            schemas[scope + f'_lstm{i}_state_h'] = VariableSchema(shape=[BATCH, size], dtype=tf.float32)
+            zero_states[scope + f'_lstm{i}_state_c'] = np.expand_dims(np.zeros(size, dtype=np.float32), 0)
+            zero_states[scope + f'_lstm{i}_state_h'] = np.expand_dims(np.zeros(size, dtype=np.float32), 0)
 
     return schemas, zero_states

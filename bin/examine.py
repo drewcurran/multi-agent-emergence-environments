@@ -16,12 +16,6 @@ from ma_policy.load_policy import load_policy
 
 logger = logging.getLogger(__name__)
 
-def config():
-    tf.logging.set_verbosity(tf.logging.ERROR)
-    if type(tf.contrib) != type(tf): tf.contrib._warning = None
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-    os.environ['LOG_NETS'] = 'False'
-
 @click.command()
 @click.argument('argv', nargs=-1, required=False)
 def main(argv):
@@ -42,8 +36,6 @@ def main(argv):
         bin/examine.py my_env_jsonnet.jsonnet my_policy.npz
         bin/examine.py mae_envs/envs/py/hide_and_seek.py my_policy.npz n_hiders=3 n_seekers=2 n_boxes=8 n_ramps=1
     '''
-    config()
-
     core_dir = abspath(join(dirname(__file__), '..'))
     envs_dir = 'mae_envs/envs'
     pols_dir = 'ma_policy/pols'

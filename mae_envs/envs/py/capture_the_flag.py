@@ -164,7 +164,9 @@ class GameEnvironment:
                              team_obs_key = 'team_id')
         
         # Assign gamemode for each agent as a constant observation
-        env = GameMode(env, self.playground, self.mode)
+        env = GameMode(env,
+                       playground = self.playground,
+                       mode = self.mode)
         
         # Observation keys
         keys_self = ['agent_qpos_qvel', 'team_id', 'game_mode']

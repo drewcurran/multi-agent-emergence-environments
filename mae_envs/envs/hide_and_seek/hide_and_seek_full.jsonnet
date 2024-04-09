@@ -1,6 +1,6 @@
 {
     make_env: {
-        "function": "mae_envs.envs.py.hide_and_seek:make_env",
+        "function": "mae_envs.envs.hide_and_seek.hide_and_seek:make_env",
         args: {
             # Agents
             n_hiders: 2,

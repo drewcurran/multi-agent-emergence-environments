@@ -18,7 +18,7 @@ from mae_envs.modules.objects import Boxes, Ramps, LidarSites
 from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import uniform_placement, center_placement
 from mae_envs.envs.base import Base
-from mae_envs.envs.py.hide_and_seek import quadrant_placement
+from mae_envs.envs.hide_and_seek.hide_and_seek import quadrant_placement
 
 
 class LockObjectsTask(gym.Wrapper):

@@ -22,7 +22,7 @@ class PolicyViewer(MjViewer):
     '''
     PolicyViewer runs a policy with an environment and optionally displays it.
         env - environment to run policy in
-        policy - policy object to run
+        policies - policy objects to run
         display_window - if true, show the graphical viewer
         seed - environment seed to view
         duration - time in seconds to run the policy, run forever if duration=None
@@ -42,7 +42,7 @@ class PolicyViewer(MjViewer):
         if hasattr(env, "reset_goal"):
             self.goal = env.reset_goal()
         super().__init__(self.env.unwrapped.sim)
-        # TO DO: remove circular dependency on viewer object. It looks fishy.
+        # TODO: remove circular dependency on viewer object. It looks fishy.
         self.env.unwrapped.viewer = self
         if self.render and self.display_window:
             self.env.render()
@@ -74,7 +74,7 @@ class PolicyViewer(MjViewer):
         self.n_episodes = 0
         while self.duration is None or time.time() < self.end_time:
             if len(self.policies) == 1:
-                action, _ = self.policies[0].act(self.ob)
+                action, _ = self.policies[0].call(self.ob)
             else:
                 self.ob = splitobs(self.ob, keepdims=False)
                 ob_policy_idx = np.split(np.arange(len(self.ob)), len(self.policies))
@@ -82,10 +82,10 @@ class PolicyViewer(MjViewer):
                 for i, policy in enumerate(self.policies):
                     inp = itemgetter(*ob_policy_idx[i])(self.ob)
                     inp = listdict2dictnp([inp] if ob_policy_idx[i].shape[0] == 1 else inp)
-                    ac, info = policy.act(inp)
+                    ac, info = policy.call(inp)
                     actions.append(ac)
                 action = listdict2dictnp(actions, keepdims=True)
-
+            print(action)
             self.ob, rew, done, env_info = self.env.step(action)
             self.total_rew += rew
 

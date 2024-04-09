@@ -11,9 +11,7 @@ Dict(
     ramp_obs:Box(1, 9)
 )
 
-capture_the_flag.py:
-
-playground = 0, mode = 0
+capture_the_flag.py playground = 0, mode = 0:
 Dict(
     agent_qpos_qvel:Box(3, 11), # hider, prep_obs -> team_id, playground, game_mode
     box_obs:Box(2, 12),
@@ -27,3 +25,21 @@ Dict(
     observation_self:Box(11,), # hider, prep_obs -> team_id, playground, game_mode
     ramp_obs:Box(1, 9)
 )
+
+{'action_movement': array(
+    [[[8, 2, 5]],
+    [[9, 3, 0]],
+    [[2, 4, 3]],
+    [[2, 4, 3]]], dtype=int32),
+
+'action_pull': array(
+    [[0],
+    [0],
+    [1],
+    [1]]),
+
+'action_glueall': array(
+    [[1],
+    [0],
+    [1],
+    [1]])}

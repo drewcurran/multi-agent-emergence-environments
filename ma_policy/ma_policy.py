@@ -1,8 +1,6 @@
 import tensorflow as tf
 import numpy as np
 import gym
-import logging
-import sys
 from copy import deepcopy
 from functools import partial
 from collections import OrderedDict
@@ -12,6 +10,7 @@ from ma_policy.util import listdict2dictnp, normc_initializer, shape_list, l2_lo
 from ma_policy.variable_schema import VariableSchema, BATCH, TIMESTEPS
 from ma_policy.normalizers import EMAMeanStd
 from ma_policy.graph_construct import construct_tf_graph, construct_schemas_zero_state
+from ma_policy.make_policy import load_variables
 
 
 class MAPolicy(object):
@@ -26,37 +25,37 @@ class MAPolicy(object):
             not_trainable_vars: optional. List of variable name segements that should not be
                 trained. trainable_vars supercedes this if both are specified.
     '''
-    def __init__(self, scope, *, ob_space, ac_space, network_spec, v_network_spec=None,
-                 stochastic=True, reuse=False, build_act=True,
-                 trainable_vars=None, not_trainable_vars=None,
-                 gaussian_fixed_var=True, weight_decay=0.0, ema_beta=0.99999,
-                 **kwargs):
-        self.reuse = reuse
+    def __init__(self, scope, *, ob_space, ac_space, pi_network_spec, v_network_spec=None, stochastic=True, normalize=True,
+                 trainable_vars=None, not_trainable_vars=None, build_act=True,
+                 reuse=False, gaussian_fixed_var=True,
+                 weight_decay=0.0, ema_beta=0.99999, **kwargs):
+        assert isinstance(ac_space, gym.spaces.Dict)
+        assert isinstance(ob_space, gym.spaces.Dict)
+        assert 'observation_self' in ob_space.spaces
+
         self.scope = scope
         self.ob_space = ob_space
         self.ac_space = deepcopy(ac_space)
-        self.input_schemas = {}
-        self.network_spec = network_spec
-        self.v_network_spec = v_network_spec or self.network_spec
+        self.pi_network_spec = pi_network_spec
+        self.v_network_spec = v_network_spec or pi_network_spec
         self.stochastic = stochastic
+        self.normalize = normalize
+
         self.trainable_vars = trainable_vars
         self.not_trainable_vars = not_trainable_vars
+        self.build_act = build_act
+        self.reuse = reuse
         self.gaussian_fixed_var = gaussian_fixed_var
         self.weight_decay = weight_decay
+        self._ema_beta = ema_beta
         self.kwargs = kwargs
-        self.build_act = build_act
+        self.input_schemas = {}
         self._reset_ops = []
         self._auxiliary_losses = []
         self._running_mean_stds = {}
-        self._ema_beta = ema_beta
         self.training_stats = []
 
-        assert isinstance(self.ac_space, gym.spaces.Dict)
-        assert isinstance(self.ob_space, gym.spaces.Dict)
-        assert 'observation_self' in self.ob_space.spaces
-
         # Convert to a single-agent action space
-        # TODO: Is this the policy for the first agent?
         self.ac_space.spaces = {k: v.spaces[0] for k, v in self.ac_space.spaces.items()}
 
         # Create a probability distribution type for each action
@@ -73,10 +72,10 @@ class MAPolicy(object):
                                                    dtype = tf.float32)
 
         # Setup schemas and zero state for layers with state
+        pi_state_schemas, pi_zero_states = construct_schemas_zero_state(
+            self.pi_network_spec, self.ob_space, 'policy_net')
         v_state_schemas, v_zero_states = construct_schemas_zero_state(
             self.v_network_spec, self.ob_space, 'vpred_net')
-        pi_state_schemas, pi_zero_states = construct_schemas_zero_state(
-            self.network_spec, self.ob_space, 'policy_net')
         self.state_keys = list(v_state_schemas.keys()) + list(pi_state_schemas.keys())
         self.input_schemas.update(v_state_schemas)
         self.input_schemas.update(pi_state_schemas)
@@ -105,34 +104,32 @@ class MAPolicy(object):
         # Actions in the action space
         taken_actions = {k: inputs[k] for k in self.pdtypes.keys()}
 
-        # Copy of observations
+        # Observations in the observation space
         processed_inp = {k: v for k, v in inputs.items() if k not in self.pdtypes.keys()}
-
         self._normalize_inputs(processed_inp)
-
-        self.state_out = OrderedDict()
-
-        # Value network
-        (vpred,
-         vpred_state_out,
-         vpred_reset_ops) = construct_tf_graph(
-            processed_inp, self.v_network_spec, scope='vpred_net', act=self.build_act)
-
-        self._init_vpred_head(vpred, processed_inp, 'vpred_out0', "value0")
 
         # Policy network
         (pi,
          pi_state_out,
          pi_reset_ops) = construct_tf_graph(
-            processed_inp, self.network_spec, scope='policy_net', act=self.build_act)
+            processed_inp, self.pi_network_spec, scope='policy_net', act=self.build_act)
+        self.pi = pi
+        # Value network
+        (vpred,
+         vpred_state_out,
+         vpred_reset_ops) = construct_tf_graph(
+            processed_inp, self.v_network_spec, scope='vpred_net', act=self.build_act)
+        self._init_vpred_head(vpred, processed_inp, 'vpred_out0', "value0")
 
+        # Output
+        self.state_out = OrderedDict()
         self.state_out.update(vpred_state_out)
         self.state_out.update(pi_state_out)
         self._reset_ops += vpred_reset_ops + pi_reset_ops
         self._init_policy_out(pi, taken_actions)
         if self.weight_decay != 0.0:
             kernels = [var for var in self.get_trainable_variables() if 'kernel' in var.name]
-            w_norm_sum = tf.reduce_sum([tf.nn.l2_loss(var) for var in kernels])
+            w_norm_sum = tf.reduce_sum(input_tensor=[tf.nn.l2_loss(var) for var in kernels])
             w_norm_loss = w_norm_sum * self.weight_decay
             self.add_auxiliary_loss('weight_decay', w_norm_loss)
 
@@ -140,18 +137,18 @@ class MAPolicy(object):
         self.reset()
 
     def _init_policy_out(self, pi, taken_actions):
-        with tf.variable_scope('policy_out'):
+        with tf.compat.v1.variable_scope('policy_out'):
             self.pdparams = {}
             for k in self.pdtypes.keys():
-                with tf.variable_scope(k):
+                with tf.compat.v1.variable_scope(k):
                     if self.gaussian_fixed_var and isinstance(self.ac_space.spaces[k], gym.spaces.Box):
-                        mean = tf.layers.dense(pi["main"],
+                        mean = tf.compat.v1.layers.dense(pi["main"],
                                                self.pdtypes[k].param_shape()[0] // 2,
                                                kernel_initializer=normc_initializer(0.01),
                                                activation=None)
-                        logstd = tf.get_variable(name="logstd",
+                        logstd = tf.compat.v1.get_variable(name="logstd",
                                                  shape=[1, self.pdtypes[k].param_shape()[0] // 2],
-                                                 initializer=tf.zeros_initializer())
+                                                 initializer=tf.compat.v1.zeros_initializer())
                         self.pdparams[k] = tf.concat([mean, mean * 0.0 + logstd], axis=2)
                     elif k in pi:
                         # This is just for the case of entity specific actions
@@ -166,31 +163,31 @@ class MAPolicy(object):
                         else:
                             assert False
                     else:
-                        self.pdparams[k] = tf.layers.dense(pi["main"],
+                        self.pdparams[k] = tf.compat.v1.layers.dense(pi["main"],
                                                            self.pdtypes[k].param_shape()[0],
                                                            kernel_initializer=normc_initializer(0.01),
                                                            activation=None)
 
-            with tf.variable_scope('pds'):
+            with tf.compat.v1.variable_scope('pds'):
                 self.pds = {k: pdtype.pdfromflat(self.pdparams[k])
                             for k, pdtype in self.pdtypes.items()}
 
-            with tf.variable_scope('sampled_action'):
+            with tf.compat.v1.variable_scope('sampled_action'):
                 self.sampled_action = {k: pd.sample() if self.stochastic else pd.mode()
                                        for k, pd in self.pds.items()}
-            with tf.variable_scope('sampled_action_logp'):
+            with tf.compat.v1.variable_scope('sampled_action_logp'):
                 self.sampled_action_logp = sum([self.pds[k].logp(self.sampled_action[k])
                                                 for k in self.pdtypes.keys()])
-            with tf.variable_scope('entropy'):
+            with tf.compat.v1.variable_scope('entropy'):
                 self.entropy = sum([pd.entropy() for pd in self.pds.values()])
-            with tf.variable_scope('taken_action_logp'):
+            with tf.compat.v1.variable_scope('taken_action_logp'):
                 self.taken_action_logp = sum([self.pds[k].logp(taken_actions[k])
                                               for k in self.pdtypes.keys()])
 
     def _init_vpred_head(self, vpred, processed_inp, vpred_scope, feedback_name):
-        with tf.variable_scope(vpred_scope):
-            _vpred = tf.layers.dense(vpred['main'], 1, activation=None,
-                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
+        with tf.compat.v1.variable_scope(vpred_scope):
+            _vpred = tf.compat.v1.layers.dense(vpred['main'], 1, activation=None,
+                                     kernel_initializer=tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform"))
             _vpred = tf.squeeze(_vpred, -1)
             normalize_axes = (0, 1)
             loss_fn = partial(l2_loss, mask=processed_inp.get(feedback_name + "_mask", None))
@@ -203,7 +200,7 @@ class MAPolicy(object):
 
     def _normalize_inputs(self, processed_inp):
         # Normalize inputs across self observations
-        with tf.variable_scope('normalize_self_obs'):
+        with tf.compat.v1.variable_scope('normalize_self_obs'):
             ob_rms_self = EMAMeanStd(shape=self.ob_space.spaces['observation_self'].shape,
                                      scope="obsfilter", beta=self._ema_beta, per_element_update=False)
             self.add_running_mean_std("observation_self", ob_rms_self, axes=(0, 1))
@@ -218,7 +215,7 @@ class MAPolicy(object):
                 pass
             else:
                 # Normalize inputs across external observations
-                with tf.variable_scope(f'normalize_{key}'):
+                with tf.compat.v1.variable_scope(f'normalize_{key}'):
                     ob_rms = EMAMeanStd(shape=self.ob_space.spaces[key].shape[1:],
                                         scope=f"obsfilter/{key}", beta=self._ema_beta, per_element_update=False)
                     normalized = (processed_inp[key] - ob_rms.mean) / ob_rms.std
@@ -279,7 +276,7 @@ class MAPolicy(object):
             obs.update(taken_action)
         return obs
 
-    def act(self, observation, extra_feed_dict={}):
+    def call(self, observation, extra_feed_dict={}):
         outputs = {
             'ac': self.sampled_action,
             'ac_logp': self.sampled_action_logp,
@@ -303,10 +300,10 @@ class MAPolicy(object):
         feed_dict = {self.phs[k]: v for k, v in inputs.items()}
         feed_dict.update(extra_feed_dict)
 
-        outputs = tf.get_default_session().run(outputs, feed_dict)
+        # Get outputs
+        outputs = tf.compat.v1.get_default_session().run(outputs, feed_dict)
         self.state = outputs['state']
 
-        # Remove time dimension from outputs
         def preprocess_act_output(act_output):
             if isinstance(act_output, dict):
                 return {k: np.squeeze(v, 1) for k, v in act_output.items()}
@@ -320,11 +317,11 @@ class MAPolicy(object):
         return preprocess_act_output(outputs['ac']), info
 
     def get_variables(self):
-        variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.full_scope_name + '/')
+        variables = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, self.full_scope_name + '/')
         return variables
 
     def get_trainable_variables(self):
-        variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.full_scope_name + '/')
+        variables = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, self.full_scope_name + '/')
         if self.trainable_vars is not None:
             variables = [v for v in variables
                          if any([tr_v in v.name for tr_v in self.trainable_vars])]
@@ -334,10 +331,13 @@ class MAPolicy(object):
         variables = [v for v in variables if 'not_trainable' not in v.name]
         return variables
 
+    def load_weights_dict(self, weights):
+        load_variables(self, weights)
+
     def reset(self):
         self.state = deepcopy(self.zero_state)
-        if tf.get_default_session() is not None:
-            tf.get_default_session().run(self._reset_ops)
+        if tf.compat.v1.get_default_session() is not None:
+            tf.compat.v1.get_default_session().run(self._reset_ops)
 
     def set_state(self, state):
         self.state = deepcopy(state)

@@ -1,0 +1,73 @@
+Scope: policy_0
+
+Stochastic: False
+
+Normalize: True
+
+Observation Space:
+    agent_qpos_qvel: Box(3, 10)
+    box_obs: Box(2, 12)
+    lidar: Box(30, 1)
+    mask_aa_obs: Box(3,)
+    mask_ab_obs: Box(2,)
+    mask_ab_obs_spoof: Box(2,)
+    mask_ar_obs: Box(1,)
+    observation_self: Box(10,)
+    ramp_obs: Box(1, 9)
+
+Action Space:
+    action_movement: Tuple(MultiDiscrete([11 11 11]), MultiDiscrete([11 11 11]), MultiDiscrete([11 11 11]), MultiDiscrete([11 11 11]))
+    action_pull: Tuple(Discrete(2), Discrete(2), Discrete(2), Discrete(2))
+    action_glueall: Tuple(Discrete(2), Discrete(2), Discrete(2), Discrete(2))
+
+Network Names:
+    circ_conv1d0 ListWrapper(['lidar']) lidar
+    flatten_outer1 ListWrapper(['lidar']) lidar
+    concat2 ListWrapper(['main', 'lidar']) main
+    concat3 ListWrapper(['main', 'agent_qpos_qvel']) agent_qpos_qvel
+    concat4 ListWrapper(['main', 'box_obs']) box_obs
+    concat5 ListWrapper(['main', 'ramp_obs']) ramp_obs
+    dense6-0 agent_qpos_qvel agent_qpos_qvel
+    dense6-1 box_obs box_obs
+    dense6-2 ramp_obs ramp_obs
+    dense6-3 main main
+    entity_concat7 ListWrapper(['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'main']) objects
+    residual_sa_block8 ListWrapper(['objects']) objects
+    entity_pooling9 ListWrapper(['objects']) objects_pooled
+    concat10 ListWrapper(['main', 'objects_pooled']) main
+    dense11 ListWrapper(['main']) main
+    lstm12 ListWrapper(['main']) main
+    layernorm13 ListWrapper(['main']) main
+
+Network Spec (Layers):
+    {'activation': 'relu', 'filters': 9, 'kernel_size': 3, 'layer_type': 'circ_conv1d', 'nodes_in': ['lidar'], 'nodes_out': ['lidar']}
+    {'layer_type': 'flatten_outer', 'nodes_in': ['lidar'], 'nodes_out': ['lidar']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'lidar'], 'nodes_out': ['main']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'agent_qpos_qvel'], 'nodes_out': ['agent_qpos_qvel']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'box_obs'], 'nodes_out': ['box_obs']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'ramp_obs'], 'nodes_out': ['ramp_obs']}
+    {'activation': 'relu', 'layer_type': 'dense', 'nodes_in': ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'main'], 'nodes_out': ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'main'], 'units': 128}
+    {'layer_type': 'entity_concat', 'mask_out': 'objects_mask', 'masks_in': ['mask_aa_obs', 'mask_ab_obs', 'mask_ar_obs', None], 'nodes_in': ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'main'], 'nodes_out': ['objects']}
+    {'heads': 4, 'layer_norm': False, 'layer_type': 'residual_sa_block', 'mask': 'objects_mask', 'n_embd': 128, 'n_mlp': 1, 'nodes_in': ['objects'], 'nodes_out': ['objects']}
+    {'layer_type': 'entity_pooling', 'mask': 'objects_mask', 'nodes_in': ['objects'], 'nodes_out': ['objects_pooled']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'objects_pooled'], 'nodes_out': ['main']}
+    {'activation': 'relu', 'layer_type': 'dense', 'units': 256}
+    {'layer_type': 'lstm', 'units': 256}
+    {'layer_type': 'layernorm'}
+
+Value Network Spec (Layers):
+    {'activation': 'relu', 'filters': 9, 'kernel_size': 3, 'layer_type': 'circ_conv1d', 'nodes_in': ['lidar'], 'nodes_out': ['lidar']}
+    {'layer_type': 'flatten_outer', 'nodes_in': ['lidar'], 'nodes_out': ['lidar']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'lidar'], 'nodes_out': ['main']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'agent_qpos_qvel'], 'nodes_out': ['agent_qpos_qvel']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'box_obs'], 'nodes_out': ['box_obs']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'ramp_obs'], 'nodes_out': ['ramp_obs']}
+    {'activation': 'relu', 'layer_type': 'dense', 'nodes_in': ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'main'], 'nodes_out': ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'main'], 'units': 128}
+    {'layer_type': 'entity_concat', 'mask_out': 'objects_mask', 'masks_in': [None, None, None, None], 'nodes_in': ['agent_qpos_qvel', 'box_obs', 'ramp_obs', 'main'], 'nodes_out': ['objects']}
+    {'heads': 4, 'layer_norm': False, 'layer_type': 'residual_sa_block', 'mask': 'objects_mask', 'n_embd': 128, 'n_mlp': 1, 'nodes_in': ['objects'], 'nodes_out': ['objects']}
+    {'layer_type': 'entity_pooling', 'mask': 'objects_mask', 'nodes_in': ['objects'], 'nodes_out': ['objects_pooled']}
+    {'layer_type': 'concat', 'nodes_in': ['main', 'objects_pooled'], 'nodes_out': ['main']}
+    {'activation': 'relu', 'layer_type': 'dense', 'units': 256}
+    {'layer_type': 'lstm', 'units': 256}
+    {'layer_type': 'layernorm'}
+    

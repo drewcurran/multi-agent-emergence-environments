@@ -7,8 +7,7 @@ from mae_envs.wrappers.multi_agent import (SplitMultiAgentActions,
                                            SplitObservations, SelectKeysWrapper)
 from mae_envs.wrappers.util import (DiscretizeActionWrapper, ConcatenateObsWrapper,
                                     MaskActionWrapper, SpoofEntityWrapper,
-                                    DiscardMujocoExceptionEpisodes, 
-                                    AddConstantObservationsWrapper)
+                                    DiscardMujocoExceptionEpisodes)
 from mae_envs.wrappers.manipulation import (GrabObjWrapper, GrabClosestWrapper,
                                             LockObjWrapper, LockAllWrapper)
 from mae_envs.wrappers.game_mode import GameMode
@@ -22,10 +21,10 @@ from mae_envs.modules.world import FloorAttributes, WorldConstants
 from mae_envs.modules.util import uniform_placement
 
 
-'''
-Sets up the game environment.
-'''
 class GameEnvironment:
+    '''
+        Sets up the game environment.
+    '''
     def __init__(self, playground, mode):
         # Display constants
         self.team_colors = [[np.array((66., 235., 244., 255.)) / 255], [(1., 0., 0., 1.)]]
@@ -36,7 +35,6 @@ class GameEnvironment:
         self.substeps = 15
         self.action_lims = (-0.9, 0.9)
         self.deterministic = False
-        self.preparation_time = 0.4
         self.reward_type = 'joint_zero_sum'
 
         # Playground constants
@@ -252,10 +250,18 @@ class GameEnvironment:
         return env
 
 
-'''
-Designs the environment based on the game scenario.
-'''
 class GameScenario:
+    '''
+        Designs the environment based on the game scenario.
+            Playgrounds:
+                0 - Same as hide and seek
+                1 - 2x2 grid
+                2 - Boxed in flags
+            Modes:
+                0 - Same as hide and seek
+                1 - Rewarded for observing the flag
+                2 - Rewarded for bringing flag to zone
+    '''
     def __init__(self, playground, mode, floor_size = 12, grid_size = 32):
         self.playground = playground
         self.mode = mode
@@ -267,7 +273,7 @@ class GameScenario:
         self.playground_constants['floor_friction'] = 0.2
         self.playground_constants['object_friction'] = 0.01
         self.playground_constants['gravity'] = [0, 0, -50]
-        self.playground_constants['door_size'] = int(grid_size / 16)
+        self.playground_constants['door_size'] = int(grid_size / 8)
         self.playground_constants['box_size'] = floor_size / 24
         self.playground_constants['box_length'] = floor_size * (1 / 4 - 2 / grid_size)
         self.playground_constants['box_width'] = 10 / grid_size
@@ -297,7 +303,6 @@ class GameScenario:
             ]
         elif self.playground == 1:
             self.walls = [
-                Wall([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, 0), self.coords(grid_size, -1)]),
                 Wall([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, 0), self.coords(grid_size, 1)]),
             ]
             self.doors = [
@@ -320,7 +325,16 @@ class GameScenario:
     def get_agents(self):
         grid_size = self.playground_constants['grid_size']
 
-        if self.playground == 0 or self.playground == 1:
+        if self.playground == 0:
+            self.agents0 = [
+                partial(object_placement, bounds = ([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
+                partial(object_placement, bounds = ([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
+            ]
+            self.agents1 = [
+                partial(object_placement, bounds = ([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, -1), self.coords(grid_size, 1)])),
+                partial(object_placement, bounds = ([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, -1), self.coords(grid_size, 1)])),
+            ]
+        elif self.playground == 1:
             self.agents0 = [
                 partial(object_placement, bounds = ([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
                 partial(object_placement, bounds = ([self.coords(grid_size, 0), self.coords(grid_size, 0)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
@@ -390,23 +404,43 @@ class GameScenario:
     
     def get_flags(self):
         grid_size = self.playground_constants['grid_size']
-
-        self.flags = [
-            partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, -1), self.coords(grid_size, 1)])),
-            partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
-        ]
-        if self.mode == 2 or self.mode == 3:
-            self.zones = [
-                partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, -1), self.coords(grid_size, -1)])),
-                partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, 1), self.coords(grid_size, 1)])),
-            ]
-        else:
+        
+        if self.mode == 0:
+            self.flags = []
+        if self.mode <= 1:
             self.zones = []
+        if self.mode >= 1:
+            if self.playground == 1:
+                self.flags = [
+                    partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, -1), self.coords(grid_size, 1)])),
+                    partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, 1), self.coords(grid_size, 1)])),
+                ]
+            else:
+                self.flags = [
+                    partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, -1), self.coords(grid_size, 1)])),
+                    partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
+                ]
+        if self.mode == 2:
+            if self.playground == 1:
+                self.zones = [
+                    partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, -1), self.coords(grid_size, -1)])),
+                    partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, 1), self.coords(grid_size, -1)])),
+                ]
+            else:
+                self.zones = [
+                    partial(object_placement, bounds = ([self.coords(grid_size, -3/4), self.coords(grid_size, -3/4)], [self.coords(grid_size, -1), self.coords(grid_size, -1)])),
+                    partial(object_placement, bounds = ([self.coords(grid_size, 3/4), self.coords(grid_size, 3/4)], [self.coords(grid_size, 1), self.coords(grid_size, 1)])),
+                ]
         
         return (self.flags, self.zones)
     
     def get_reward(self):
-        return None
+        def hide_and_seek_rew(obs, n0, n1):
+            this_rew = np.ones((n0 + n1,))
+            this_rew[:n0][np.any(obs['mask_aa_obs'][n0:, :n0], 0)] = -1.0
+            this_rew[n0:][~np.any(obs['mask_aa_obs'][n0:, :n0], 1)] = -1.0
+            return this_rew
+        return hide_and_seek_rew
 
 
 '''
@@ -473,7 +507,7 @@ class GameRewardWrapper(gym.Wrapper):
             this_rew[:self.n0][np.any(obs['mask_aa_obs'][self.n0:, :self.n0], 0)] = -1.0
             this_rew[self.n0:][~np.any(obs['mask_aa_obs'][self.n0:, :self.n0], 1)] = -1.0
         else:
-            this_rew = self.rew_fn(self.n0, self.n1)
+            this_rew = self.rew_fn(obs, self.n0, self.n1)
 
         if self.rew_type == 'joint_mean':
             this_rew[:self.n0] = this_rew[:self.n0].mean()
@@ -512,10 +546,10 @@ def object_placement(grid, obj_size, metadata, random_state, bounds = None):
                     random_state.randint(minY, maxY)])
 
 
-'''
-Makes the environment.
-'''
-def make_env(playground = 0, mode = 0):
+def make_env(playground = 1, mode = 1):
+    '''
+        Makes the environment.
+    '''
     env_generator = GameEnvironment(playground, mode)
     env = env_generator.construct_env()
     env.reset()

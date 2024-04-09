@@ -29,7 +29,7 @@ def shape_list(x):
         deal with dynamic shape in tensorflow cleanly
     '''
     ps = x.get_shape().as_list()
-    ts = tf.shape(x)
+    ts = tf.shape(input=x)
     return [ts[i] if ps[i] is None else ps[i] for i in range(len(ps))]
 
 
@@ -41,6 +41,6 @@ def l2_loss(pred, label, std, mask):
             TODO: Revisit whether this is the right choice.
     '''
     if mask is None:
-        return 0.5 * tf.reduce_mean(tf.square((pred - label) / std))
+        return 0.5 * tf.reduce_mean(input_tensor=tf.square((pred - label) / std))
     else:
-        return 0.5 * tf.reduce_mean(mask * tf.square((pred - label) / std))
+        return 0.5 * tf.reduce_mean(input_tensor=mask * tf.square((pred - label) / std))

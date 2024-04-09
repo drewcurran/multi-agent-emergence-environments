@@ -5,14 +5,15 @@ Training policies and viewing environments adapted from Emergent Tool Use From M
 ### Dependencies
 ```
 pip install -r mujoco-worldgen/requirements.txt
+pip install -r requirements_ma_policy.txt
 pip install -e mujoco-worldgen/
-pip install -e ./
-pip install -r ./requirements_ma_policy.txt
+pip install -e .
 ```
 ### Specifications
 ```
 macOS
 Python 3.6
+MuJoCo 2.1.0
 ```
 
 ## Environment Generation

@@ -1,6 +1,6 @@
 {
     make_env: {
-        "function": "mae_envs.envs.py.shelter_construction:make_env",
+        "function": "mae_envs.envs.other.blueprint_construction:make_env",
         args: {
             # Agent Actions
             grab_box: true,
@@ -11,16 +11,17 @@
             lock_box: true,
             lock_type: "all_lock_team_specific",
             lock_out_of_vision: false,
+            
 
             # Scenario
             n_substeps: 15,
-            horizon: 240,
+            horizon: 150,
 
             # Objects
             n_boxes: 8,
-            n_elongated_boxes: 3,
             box_only_z_rot: true,
             boxid_obs: false,
+            boxsize_obs: true,
 
             # Observations
             n_lidar_per_agent: 30,
@@ -31,10 +32,23 @@
                 mask_ar_obs: [[0]],
             },
 
-            # Shelter
-            shelter_reward_scale: 0.001,
-            objective_diameter: [1.5, 2],
-            objective_placement: 'uniform_away_from_walls',
+            # Blueprint
+            n_sites: [1, 4],
+            site_placement: 'uniform_away_from_walls',
+            reward_infos: [
+                {
+                    type: 'construction_dense',
+                    alpha: -1.5,
+                    use_corners: true,
+                    reward_scale: 0.05,
+                },
+                {
+                    type: 'construction_completed',
+                    site_activation_radius: 0.1,
+                    use_corners: true,
+                    reward_scale: 3,
+                },
+            ],
         },
     },
 }

@@ -31,4 +31,7 @@ bin/examine.py capture_the_flag 1_start
 ``` 
 
 ## Policy Optimization
-WIP
+The `bin/train` script allows you to train policies for a given environment:
+```
+bin/train.py capture_the_flag
+``` 

@@ -1,6 +1,5 @@
 import tensorflow as tf
 import numpy as np
-import gym
 from copy import deepcopy
 from baselines.common.distributions import make_pdtype 
 from tensorflow.keras.layers import Dense, LayerNormalization
@@ -18,9 +17,11 @@ class MAPolicy:
         self.stochastic = stochastic
         self.normalize = normalize
         
-        self.episodes = 0
         self.policy_net = PolicyNetwork(self.configure_actions())
         self.value_net = ValueNetwork()
+
+        self.episodes = 0
+        self.losses = []
     
     def configure_actions(self):
         self.pdtypes = {k: make_pdtype(s.spaces[0]) for k, s in self.ac_space.spaces.items()}
@@ -31,15 +32,25 @@ class MAPolicy:
             action_shapes[k] = total_params, shape
         return action_shapes
 
-    def train(self, episodes=100, lr=3e-4, gamma=0.99, clip_range=0.2, old_probs=None):
+    def train(self, episodes=100, lr=3e-4, gamma=0.99, clip_range=0.2, old_probs=None, save=100, filepath=''):
         self.policy_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
         self.value_optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
         for episode in range(episodes):
             trajectories = self.collect_trajectories()
+            while trajectories is None:
+                trajectories = self.collect_trajectories()
+            
             observations, actions, returns, advantages = self.compute_advantages_and_returns(trajectories, gamma)
             old_probs = self.update_policy_and_value(observations, actions, returns, advantages, old_probs, clip_range)
-            print(f"Episode {self.episodes + episode + 1} ({episode + 1}) complete.")
+
+            print(f"Episode {self.episodes + 1} ({episode + 1}) complete.")
+            if self.episodes % save == 0:
+                print('Saving networks and statistics')
+                self.policy_net.save_weights(f'{filepath}/policy{self.episodes}')
+                self.value_net.save_weights(f'{filepath}/values{self.episodes}')
+                np.save(f'{filepath}/losses{self.episodes}', np.array(self.losses))
+            self.episodes += 1
 
     def collect_trajectories(self):
         obs = self.env.reset()
@@ -61,8 +72,8 @@ class MAPolicy:
             except:
                 self.env.reset()
                 self.policy_net.reset()
-                self.collect_trajectories()
-                break
+                return None
+                
             trajectories.append((obs, chosen, reward))
 
             obs = new_obs
@@ -111,6 +122,8 @@ class MAPolicy:
                     surrogate_loss_2 = tf.clip_by_value(ratio, 1 - clip_range, 1 + clip_range) * advantages[i][0]
                     policy_loss += -tf.reduce_mean(tf.minimum(surrogate_loss_1, surrogate_loss_2))
                     value_loss += tf.keras.losses.mean_squared_error(returns[i], new_value_estimate)
+
+        self.losses += [policy_loss, value_loss]
 
         policy_grads = tape.gradient(policy_loss, self.policy_net.trainable_variables)
         value_grads = tape.gradient(value_loss, self.value_net.trainable_variables)

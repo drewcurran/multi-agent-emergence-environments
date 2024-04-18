@@ -40,8 +40,7 @@ def load_ckpt(pattern, **kwargs):
     '''
     print("Loading policy from the file: %s" % pattern)
     env = kwargs.pop('env', None)
-    scope = kwargs.pop('scope', 'policy')
-    policy = MAPolicy(scope, env.observation_space, env.action_space)
+    policy = MAPolicy(env)
     policy.load_weights(pattern)
     return policy
 

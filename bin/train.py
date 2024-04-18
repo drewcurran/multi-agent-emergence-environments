@@ -22,35 +22,24 @@ def main(argv):
 
     names, kwargs = parse_arguments(argv)
 
+    # Load the environment
     env_name = names[0]
-    env, args_remaining_env = load_env(env_name, core_dir, envs_dir, **kwargs)
+    env, _ = load_env(env_name, core_dir, envs_dir, **kwargs)
     env.reset()
     
-    # Examine the environment
+    # Make a new policy
     if len(names) == 1:
         print("Training new model.")
-        assert len(args_remaining_env) == 0
         policy = MAPolicy(env)
 
-    # Run policies on the environment
+    # Load a previous policy
     if len(names) == 2:  
         print("Training old model.")
         pol_name = names[1]
         policy = load_policy(pol_name, core_dir, pols_dir, env=env, scope="policy", **kwargs)
-    
-    if kwargs['load_weights']:
-        policy.policy_net.load_weights(f'ma_policy/pols/capture_the_flag/policy{policy.episodes}')
-        policy.value_net.load_weights(f'ma_policy/pols/capture_the_flag/values{policy.episodes}')
-
-    args_to_pass, args_remaining_viewer = extract_matching_arguments(MAPolicy.train, kwargs)
-    args_remaining = set(args_remaining_env).intersection(set(args_remaining_viewer))
-    assert len(args_remaining) == 0
 
     policy.reset()
-    policy.train(**args_to_pass, episodes=1)
-
-    policy.policy_net.save(f'ma_policy/pols/capture_the_flag/policy{policy.episodes}')
-    policy.value_net.save(f'ma_policy/pols/capture_the_flag/values{policy.episodes}')
+    policy.train(episodes = 10000, save = 100, filepath = 'ma_policy/pols/capture_the_flag')
 
     print(main.__doc__)
 
